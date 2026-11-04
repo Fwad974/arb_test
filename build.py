@@ -1,188 +1,655 @@
-from pathlib import Path
-from jinja2 import Template
+#!/usr/bin/env python3
+"""Static site generator for Elevate Arabia. Python 3.9+, standard library only.
+
+    python3 build.py           build into ./dist and check every internal link
+    python3 build.py --serve   build, then serve ./dist at http://localhost:8000
+
+Environment (optional, set in .github/workflows/pages.yml for deploys):
+    SITE_URL    absolute site URL, e.g. https://www.elevatearabia.com
+                adds canonical/og:url tags and a sitemap.xml
+    INDEXABLE   "true" to allow search engines. Default is noindex so a
+                preview deploy never competes with the live site in search.
+"""
+import os
+import re
+import shutil
+import sys
+from datetime import date
 from html import escape
-from textwrap import dedent
+from html.parser import HTMLParser
+from pathlib import Path
+from urllib.parse import urlsplit
 
-ROOT=Path(__file__).parent
+import content as C
 
-services=[
- dict(slug='advisory',label='Business Advisory',short='Integrated strategy, financial discipline, governance and operating structure.',tag='STRATEGY & CONTROL',icon='compass',title='Integrated advisory for growth, structure and execution',intro='Bring strategy, finance, governance and operational priorities into one coherent plan for your business.',overview='Strong businesses need more than a plan. They need transparent decision rights, usable financial information, sound governance and an operating structure that supports delivery.',needs=['Strategy and growth planning','Management reporting and audit readiness','Governance and decision-rights design','Accounting and internal financial controls','Legal workstream coordination','Operational structuring and execution planning'],challenges=['Advice that remains theoretical','Siloed advice across finance, legal and operations','Weak reporting and unclear accountability','Recommendations without ownership'],deliverables=['Business and growth roadmap','Financial controls and reporting framework','Governance and accountability structure','Implementation priorities and responsibilities'],faq=[('Is this only for large companies?','No. The service is positioned for both established companies and growing businesses that need stronger foundations.'),('Does Elevate provide legal representation?','The public service description refers to legal coordination. Any regulated legal advice or representation should be confirmed directly with the firm.')],source='https://www.elevatearabia.com/blank-3'),
- dict(slug='ventures',label='Venture Building',short='Commercial structure and execution planning for emerging businesses.',tag='FROM IDEA TO LAUNCH',icon='layers',title='Build ventures that are structured, investable and ready to scale',intro='Turn a promising idea into a business with clearer commercial logic, disciplined financial planning and a practical route to launch.',overview='The challenge for many early-stage ventures is not a shortage of ideas; it is the gap between the concept and a business that can be operated, funded and grown responsibly.',needs=['Startup and venture design','Commercial models and business planning','Financial modelling and staged growth planning','Founder–investor governance alignment','Investment readiness','Commercialization and Saudi market-entry plans'],challenges=['Unclear business economics','Premature fundraising','Governance gaps between founders and investors','Scaling before operating readiness'],deliverables=['Venture model and launch thesis','Business plan and financial assumptions','Phased commercialization roadmap','Investor readiness and governance priorities'],faq=[('At what stage can a founder engage?','The current site describes support from concept to launch and onward through preparation for investment and expansion.'),('Is funding guaranteed?','No. Capital readiness improves preparation; it is not a guarantee of investment.')],source='https://www.elevatearabia.com/blank'),
- dict(slug='capital',label='Capital Readiness',short='Financial models, investor materials and disciplined funding preparation.',tag='INVESTMENT PREPARATION',icon='chart',title='Build an investor-ready business',intro='Clarify the investment case, financial model and governance position before approaching potential capital partners.',overview='Investor engagement is more credible when a business can explain what it needs, how funds will be used and why the proposed growth plan is realistic.',needs=['Investment case development','Financial models and scenario analysis','Funding strategy and capital planning','Investor presentations and supporting documents','Due diligence preparation','Governance readiness','Strategic introductions when appropriate'],challenges=['Weak or inconsistent numbers','Unclear capital requirements','Unprepared diligence materials','Approaching investors too early'],deliverables=['Investment narrative and materials','Financial and funding model','Due-diligence preparation checklist','Capital readiness priorities'],faq=[('Does Elevate directly invest?','The public site describes capital-readiness, strategy and investor support; it does not state that the service guarantees direct investment.'),('Can an existing company use this service?','Yes. The current offering is described for businesses as well as ventures.')],source='https://www.elevatearabia.com/blank-2'),
- dict(slug='market-entry',label='Saudi Market Entry',short='Localized commercial and operating models for entering the Kingdom.',tag='MARKET ENTRY & EXPANSION',icon='globe',title='Enter Saudi Arabia with structure and confidence',intro='Connect market opportunity to the right local commercial model, governance arrangements and phased execution plan.',overview='Successful entry requires more than opening a local presence. The strategy must match Saudi operating realities, partnership expectations, financial needs and an achievable pace of launch.',needs=['Saudi market-entry strategy','Commercial positioning and localization','Operating-model design','Financial planning for launch and scale','Governance and legal coordination','Stakeholder and partnership alignment','Phased expansion roadmap'],challenges=['Insufficient localization','Overcommitting before readiness','Weak stakeholder alignment','Fragmented market-entry workstreams'],deliverables=['Entry strategy and market thesis','Localized commercial and operating model','Partner and stakeholder priorities','Sequenced launch and expansion roadmap'],faq=[('Does this include company registration?','The public site emphasizes planning, operating structures and legal coordination. Confirm specific licensing and registration deliverables with the firm.'),('Does it cover existing businesses expanding further?','Yes. The positioning addresses both initial market entry and expansion within Saudi Arabia.')],source='https://www.elevatearabia.com/blank-4'),
- dict(slug='industrial',label='Industrial Solutions',short='Automotive, industrial operations and manufacturing transformation support.',tag='INDUSTRY & OPERATIONS',icon='factory',title='Strengthen industrial readiness from strategy to the factory floor',intro='Specialist advisory for manufacturing projects, EV and AV readiness, production systems, ramp-up and industrial capability building.',overview='Industrial ventures need the commercial case and the operational reality to work together. The service links factory and production planning with launch discipline and localized capability development.',needs=['Automotive and industrial strategy','EV and AV readiness planning','Factory and production-system setup','Operational transformation and automation','Launch and ramp-up readiness','Deployment of short-term specialist expertise','Industrial projects in Saudi Arabia'],challenges=['Disconnect between planning and production','Gaps in technical capability','Launch or ramp-up uncertainty','Inadequate manufacturing readiness'],deliverables=['Industrial readiness assessment','Operational transformation priorities','Production-launch action plan','Capability and specialist support map'],faq=[('Is this limited to automotive?','No. The public site discusses broader industrial and manufacturing projects as well as automotive initiatives.'),('Is Kaizen part of the international capability?','The company describes an international relationship with Hirayama Holdings and an emphasis on Gemba Kaizen.')],source='https://www.elevatearabia.com/home-1'),
- dict(slug='construction-technology',label='Construction Technology',short='Technology-led construction systems and commercialization advisory.',tag='BUILT ENVIRONMENT',icon='building',title='Advance construction through technology-led delivery',intro='Strategic and commercialization support for modular, technology-driven and industrialized building methods.',overview='The company highlights smart construction, light-gauge steel, lightweight concrete systems and delivery models intended to improve efficiency, building performance and scalability.',needs=['Modular and smart building systems','Light-gauge steel construction models','Lightweight concrete systems','Delivery and commercialization planning','Energy-efficient building methods','Partnership and growth alignment'],challenges=['Slow and fragmented delivery models','Difficulty scaling innovative construction systems','Technology-to-market gaps','Inconsistent performance planning'],deliverables=['Commercialization and market model','Partnership and growth priorities','Execution and delivery roadmap','Technology adoption considerations'],faq=[('What is Quadratech?','The existing services page describes Quadratech along with Quadraframe and Quadracrete technologies. Confirm technical specifications and rights to use product names before publication.'),('Are performance figures independently verified?','The source website makes a construction-speed claim, but this prototype does not independently validate it.')],source='https://www.elevatearabia.com/home-1'),
-]
+ROOT = Path(__file__).resolve().parent
+OUT = ROOT / 'dist'
+SITE_URL = os.environ.get('SITE_URL', '').strip().rstrip('/')
+INDEXABLE = os.environ.get('INDEXABLE', '').strip().lower() in ('1', 'true', 'yes')
+YEAR = date.today().year
 
-sectors=[
- dict(slug='life-sciences',label='Life Sciences & Healthcare',category='Innovation',desc='Biotech, regenerative medicine, diagnostics, therapeutics and healthcare innovation.',link='life-sciences.html'),
- dict(slug='technology',label='Technology & Advanced Industry',category='Industry',desc='Advanced manufacturing, innovation-led ventures and technical operating platforms.',link='industrial.html'),
- dict(slug='investment',label='Investment, Financial & Asset Platforms',category='Capital',desc='Business models, readiness and structures supporting investment and asset platforms.',link='capital.html'),
- dict(slug='education',label='Education & Capability Platforms',category='Innovation',desc='Commercial models for learning, training and capability-building businesses.',link='sectors.html#education'),
- dict(slug='agriculture',label='Food, Agriculture & Sustainability Innovation',category='Industry',desc='Growth and commercialization in agrifood, sustainability and resource-focused businesses.',link='sectors.html#agriculture'),
- dict(slug='media',label='Media, Entertainment & Consumer Ventures',category='Consumer',desc='Strategy and structure for audience-led, entertainment and consumer-facing ventures.',link='sectors.html#media'),
- dict(slug='made-in-saudi',label='Made in Saudi & National Development Platforms',category='Industry',desc='Localization, national capability development and Saudi industrial growth.',link='market-entry.html'),
-]
 
-life_sciences=dict(slug='life-sciences',label='Life Sciences & Healthcare',tag='SECTOR SPECIALISM',icon='health',title='Build life sciences ventures for Saudi Arabia',intro='Sector-focused strategy, structuring and commercialization support for biotechnology, regenerative medicine, therapeutics, diagnostics and healthcare innovation.',overview='Scientific merit needs to be supported by a viable business structure, investor confidence, governance and a credible commercialization plan.',needs=['Biotechnology','Regenerative medicine','Therapeutic products and services','Diagnostics and precision health','Healthcare innovation platforms','Research and commercialization initiatives'],challenges=['Weak path from research to commercialization','Capital-intensive development cycles','Regulatory and market planning gaps','Premature scaling'],deliverables=['Life sciences commercialization roadmap','Governance and business structure','Investment case and financial plan','Saudi market-entry priorities'],faq=[('Does Elevate conduct clinical trials?','The public content describes commercial, financial, governance and venture support; it does not establish clinical trial operations.'),('Does the service include regulatory approvals?','The site references coordination and planning, but regulatory approval responsibilities should be scoped and confirmed directly.')],source='https://www.elevatearabia.com/blank-1')
+# --------------------------------------------------------------------------- helpers
 
-team_saudi=[('Sheikh Hamza Albakry','Chairman & Co-Founder'),('Mohamed Chaudhry','CEO & Co-Founder'),('Osama Albakry','GM & Co-Founder'),('Eyad Albakry','Legal Counsel'),('Waddah Swar','Head of Eastern Province'),('Ibrahim AlBakry','CFO'),('Mohammed Batarfi','Financial Consultant'),('Mohammed Saqib Bashir','Automotive Industrial Consultant'),('Abdelrafea Fakher','Lean Management Specialist'),('Bahaa Mohammed','Administrative Manager'),('Rama Abdulnaser Hussain Charam','Strategic Analytics')]
-team_japan=[('Akihiro Ito','Process improvement consultant'),('Hiromitsu Hayashida','Former deputy plant manager, Toyota Tahara'),('Toshio Morishima','Former Denso plant manager'),('Kouichi Kakizawa','Expert Specialist'),('Tadashi Mori','Former Toyota Chief Leader'),('Mitsuru Suzuki','Former Toyota production engineering leader'),('Tsutomu Orito','Toyota and DENSO TEN alumnus'),('Ishikawa Hisayoshi','Professional Engineer'),('Tadamasa Ishigaki','Former Toyota Chief Leader'),('Toshio Takeuchi','Gemba Kaizen consultant'),('Kenichi Sawada','Sony alumnus'),('Maresuke Ishii','Kaizen and overseas expansion consultant'),('Shigeyuki Obara','RICOH production engineering'),('Miyuky Honda','Manager of Consulting Division'),('Kazuhiro Tsuchiya','Management consultant and engineering doctorate')]
+def e(text):
+    return escape(str(text), quote=True)
 
-values=[('Integrity & accountability','Respectful relationships and clear responsibility.'),('Continuous improvement','An emphasis on Kaizen and practical operational learning.'),('Innovation & brand','Commercial innovation and differentiated propositions.'),('Partnerships','Collaboration built on mutual trust and complementary expertise.'),('Community','Long-term contribution and meaningful local connections.'),('Environment & safety','Responsible, safe and well-managed workplaces.')]
 
-# Helpers
-icons={
- 'arrow':'<path d="M5 12h14m-6-6 6 6-6 6"/>',
- 'arrowup':'<path d="M7 17 17 7M8 7h9v9"/>',
- 'compass':'<circle cx="12" cy="12" r="9"/><path d="m15.7 8.3-2.8 4.6-4.6 2.8 2.8-4.6z"/>',
- 'layers':'<path d="m12 2 9 5-9 5-9-5 9-5Zm-9 10 9 5 9-5M3 17l9 5 9-5"/>',
- 'chart':'<path d="M4 20V4m0 16h16M8 15l4-4 3 2 5-7"/>',
- 'globe':'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-5 5-5 13 0 18m0-18c5 5 5 13 0 18"/>',
- 'factory':'<path d="M3 21V9l6 4V9l6 4V4h6v17H3Zm3-4h2m3 0h2m3 0h2"/>',
- 'building':'<path d="M3 21V6l9-4 9 4v15M3 21h18M9 8h.01M15 8h.01M9 12h.01M15 12h.01M10 21v-5h4v5"/>',
- 'health':'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0l-1 1-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>',
- 'menu':'<path d="M4 7h16M4 12h16M4 17h16"/>','close':'<path d="M5 5l14 14M19 5 5 19"/>','plus':'<path d="M12 5v14M5 12h14"/>','minus':'<path d="M5 12h14"/>','check':'<path d="m4 12 5 5L20 6"/>',
- 'mail':'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>','phone':'<path d="M6.5 3H10l1.3 4.5-2 2a14 14 0 0 0 5.2 5.2l2-2L21 14v3.5a3 3 0 0 1-3 3A15 15 0 0 1 3.5 6 3 3 0 0 1 6.5 3Z"/>','pin':'<path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
- 'search':'<circle cx="10.8" cy="10.8" r="7"/><path d="m16 16 5 5"/>','chevron':'<path d="m9 18 6-6-6-6"/>','download':'<path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/>',
+def hl(text):
+    """Escape a headline and render [bracketed] text in the second tone."""
+    return re.sub(r'\[(.+?)\]', r'<span class="tone">\1</span>', e(text))
+
+
+ICONS = {
+    'arrow': '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    'external': '<path d="M7 17 17 7M9 7h8v8"/>',
+    'menu': '<path d="M4 7h16M4 12h16M4 17h16"/>',
+    'close': '<path d="M6 6l12 12M18 6 6 18"/>',
 }
-def icon(name, cls=''):
-  body=icons.get(name,icons['arrow'])
-  return f'<svg aria-hidden="true" class="icon {cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">{body}</svg>'
 
-def service_card(s,number=None,featured=False):
-    n=f'<span class="service-number">{number:02d}</span>' if number else ''
-    return f'<a href="{s["slug"]}.html" class="service-card {"service-card--feature" if featured else ""}"><div class="service-card-top">{n}<span class="service-icon">{icon(s["icon"])}</span></div><div><h3>{escape(s["label"])}</h3><p>{escape(s["short"])}</p></div><span class="service-card-link">Explore capability {icon("arrowup")}</span></a>'
 
-def section_label(num,tag): return f'<div class="kicker"><span>{num}</span>{escape(tag)}</div>'
+def icon(name, cls='icon'):
+    return (f'<svg class="{cls}" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            f'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">{ICONS[name]}</svg>')
 
-def bullet_list(items, cls='check-list'):
-    return '<ul class="'+cls+'">'+''.join(f'<li>{icon("check") if cls=="check-list" else ""}<span>{escape(x)}</span></li>' for x in items)+'</ul>'
 
-def cta(title='Let’s build what comes next.',body='Talk to the team about your business, investment or Saudi market opportunity.',label='Discuss a project'):
- return f'<section class="cta-section section"><div class="wrap"><div class="cta-band"><div><div class="mini-label light">START A CONVERSATION</div><h2>{title}</h2><p>{body}</p></div><a class="button button-light" href="contact.html">{label} {icon("arrowup")}</a></div></div></section>'
+def link_arrow(href, label, external=False):
+    attrs = ' target="_blank" rel="noopener"' if external else ''
+    sr = '<span class="visually-hidden"> (opens in a new tab)</span>' if external else ''
+    return f'<a class="link-arrow" href="{e(href)}"{attrs}>{e(label)}{sr}{icon("external" if external else "arrow")}</a>'
 
-BASE=Template('''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#142536"><meta name="description" content="{{ description }}"><title>{{ title }} | Elevate Arabia</title><link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="assets/css/styles.css"></head>
-<body data-page="{{ slug }}"><a class="skip-link" href="#main">Skip to main content</a>
-<header class="site-header"><div class="wrap nav-wrap"><a href="index.html" class="brand" aria-label="Elevate Arabia home"><span class="brand-stroke"></span><span class="brand-type">ELEVATE <small>ARABIA</small></span></a><nav class="desktop-nav" aria-label="Primary navigation"><a class="nav-link {{ 'is-active' if slug=='index' else '' }}" href="index.html">Home</a><div class="nav-dropdown" data-dropdown><button class="nav-link nav-dropdown-toggle {{ 'is-active' if slug in ['services','advisory','ventures','capital','market-entry','industrial','construction-technology'] else '' }}" aria-expanded="false" aria-controls="services-menu">Services <span class="tiny-caret"></span></button><div id="services-menu" class="mega-menu" hidden><div><span class="mega-label">WHAT WE DO</span><a href="services.html" class="mega-lead">All services {{ arrowup }}</a><p>Business capabilities, from strategy to implementation.</p></div><div class="mega-list">{{ service_links }}</div></div></div><div class="nav-dropdown" data-dropdown><button class="nav-link nav-dropdown-toggle {{ 'is-active' if slug in ['sectors','life-sciences'] else '' }}" aria-expanded="false" aria-controls="sectors-menu">Industries <span class="tiny-caret"></span></button><div id="sectors-menu" class="mega-menu mega-menu--sectors" hidden><div><span class="mega-label">SECTOR EXPERIENCE</span><a href="sectors.html" class="mega-lead">All industries {{ arrowup }}</a><p>Commercial and structural expertise across Saudi opportunity areas.</p></div><div class="mega-list">{{ sector_links }}</div></div></div><a class="nav-link {{ 'is-active' if slug=='about' else '' }}" href="about.html">About</a></nav><div class="nav-actions"><a href="contact.html" class="button button-red button-small">Discuss a project {{ arrowup }}</a><button type="button" class="menu-button" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open mobile menu">{{ menu }}</button></div></div><div class="mobile-menu" id="mobile-menu" hidden><nav aria-label="Mobile navigation"><a href="index.html">Home</a><a href="services.html">Services overview</a>{{ mobile_services }}<a href="sectors.html">Industries</a><a href="life-sciences.html" class="indent">Life Sciences & Healthcare</a><a href="about.html">About</a><a href="contact.html">Contact</a></nav></div></header>
-<main id="main">{{ body }}</main>
-<footer class="footer"><div class="wrap"><div class="footer-main"><div><a href="index.html" class="brand brand-footer"><span class="brand-stroke"></span><span class="brand-type">ELEVATE <small>ARABIA</small></span></a><p>Integrated strategy, finance, governance and execution for Saudi growth opportunities.</p><span class="footer-note">Jeddah · Saudi Arabia</span></div><div><h3>Explore</h3><a href="services.html">Services</a><a href="sectors.html">Industries</a><a href="about.html">About us</a><a href="contact.html">Contact</a></div><div><h3>Capabilities</h3><a href="advisory.html">Business Advisory</a><a href="ventures.html">Venture Building</a><a href="capital.html">Capital Readiness</a><a href="market-entry.html">Saudi Market Entry</a><a href="industrial.html">Industrial Solutions</a><a href="construction-technology.html">Construction Technology</a></div><div><h3>Get in touch</h3><a href="mailto:ceo@elevatearabia.com">ceo@elevatearabia.com</a><a href="mailto:os@elevatearabia.com">os@elevatearabia.com</a><a href="tel:+966533337712">+966 53 333 7712</a><a href="tel:+966562211666">+966 56 221 1666</a><p class="footer-note">7th Floor, Sultan Center<br>Madinah Road, Jeddah, KSA</p></div></div><div class="footer-bottom"><span>© 2026 Elevate Arabia · Website redesign prototype</span><div><a href="terms.html">Terms & Conditions</a><a href="privacy.html">Privacy Policy</a><a href="design-system.html">UI system</a></div></div></div></footer>
-<script src="assets/js/app.js" defer></script></body></html>''')
 
-service_links=''.join(f'<a href="{s["slug"]}.html">{escape(s["label"])} {icon("chevron")}</a>' for s in services)
-sector_links=''.join(f'<a href="{s["link"]}">{escape(s["label"])} {icon("chevron")}</a>' for s in sectors)
-mobile_services=''.join(f'<a class="indent" href="{s["slug"]}.html">{escape(s["label"])}</a>' for s in services)
+def button(href, label, variant=''):
+    cls = 'button' + (f' button--{variant}' if variant else '')
+    return f'<a class="{cls}" href="{e(href)}">{e(label)}</a>'
 
-def write(slug,title,description,body):
-    result=BASE.render(slug=slug,title=title,description=description,body=body,service_links=service_links,sector_links=sector_links,mobile_services=mobile_services,arrowup=icon('arrowup'),menu=icon('menu'))
-    (ROOT/(slug+'.html')).write_text(result, encoding='utf-8')
 
-# Home
-main_services=[services[0],services[1],services[2],services[3],services[4]]
-feature_links=''.join(service_card(s,i+1) for i,s in enumerate(main_services))
-sector_quick=''.join(f'<a href="{s["link"]}" class="sector-link"><span class="sector-index">{i+1:02d}</span><span>{escape(s["label"])}</span>{icon("arrowup")}</a>' for i,s in enumerate(sectors[:5]))
-body=f'''<section class="hero home-hero"><div class="wrap hero-layout"><div class="hero-content">{section_label('01','STRATEGY · CAPITAL · MARKET ENTRY')}<h1>Building businesses <em>for what comes next.</em></h1><p class="hero-intro">Elevate Arabia supports businesses, founders and investors through integrated advisory, venture building, capital readiness and Saudi market entry.</p><div class="button-row"><a href="contact.html" class="button button-red">Discuss a project {icon('arrowup')}</a><a href="services.html" class="button button-outline">Explore our services {icon('arrow')}</a></div><p class="hero-footnote">A Saudi-focused business advisory and venture support platform.</p></div><div class="hero-image"><img src="assets/images/riyadh-concept.jpg" alt="Conceptual view of Riyadh's skyline with Kingdom Centre" loading="eager"><span class="image-label">SAUDI ARABIA / GLOBAL AMBITION</span></div></div></section>
-<section class="proof-bar"><div class="wrap proof-content"><div><strong>1,500+</strong><span>Companies supported <small>(company-reported)</small></span></div><div><strong>Saudi-focused</strong><span>Local market and execution context</span></div><div><strong>Cross-border</strong><span>International partnership experience</span></div></div></section>
-<section class="section section-white"><div class="wrap"><div class="section-heading">{section_label('02','OUR SERVICES')}<div class="heading-flex"><h2>Built around the challenges <em>you need to solve.</em></h2><p>Rather than separate disciplines, our model joins business direction, financial structure and implementation into one connected approach.</p></div></div><div class="services-grid">{feature_links}</div><div class="under-grid"><span>Also explore:</span><a href="construction-technology.html">Construction Technology {icon('arrowup')}</a><a href="industrial.html">Automotive & Industrial Consulting {icon('arrowup')}</a><a href="services.html">View all capabilities {icon('arrowup')}</a></div></div></section>
-<section class="section section-soft"><div class="wrap"><div class="process-layout"><div>{section_label('03','HOW WE WORK')}<h2>From complexity <em>to clarity.</em></h2><p>Engagements vary, but the work generally moves from understanding the problem to building the right structure and supporting execution.</p></div><div class="process-steps"><div><b>01</b><h3>Understand</h3><p>Define the objectives, constraints, stakeholders and opportunities.</p></div><div><b>02</b><h3>Structure</h3><p>Build the commercial, governance and financial approach.</p></div><div><b>03</b><h3>Execute</h3><p>Translate decisions into prioritized action and practical support.</p></div></div></div></div></section>
-<section class="section section-white"><div class="wrap two-column-content"><div>{section_label('04','WHO WE ARE')}<h2>One integrated perspective.<br><em>Multiple disciplines.</em></h2><p class="rich-copy">Elevate Arabia works with established firms, entrepreneurs and investors, combining commercial planning, financial discipline, governance and sector understanding. Its public positioning emphasizes execution, not advisory in isolation.</p><a href="about.html" class="text-link">Meet Elevate Arabia {icon('arrowup')}</a></div><div class="editorial-block"><span class="mini-label">INTERNATIONAL PARTNERSHIP</span><div class="partner-wordmark">HIRAYAMA <span>HOLDINGS</span></div><p>The company identifies Hirayama Holdings, a Japan-based group, as a strategic international partner in manufacturing improvement and Gemba Kaizen.</p><a href="about.html#partnership" class="text-link">Our partnership {icon('arrowup')}</a></div></div></section>
-<section class="section section-soft"><div class="wrap"><div class="section-heading">{section_label('05','SECTORS')}<div class="heading-flex"><h2>Sector familiarity.<br><em>Business discipline.</em></h2><p>We apply advisory and business-building capabilities across innovation, advanced industry and Saudi growth sectors.</p></div></div><div class="sector-list">{sector_quick}</div><a href="sectors.html" class="text-link strong spaced">Explore all industries {icon('arrowup')}</a></div></section>
-<section class="section section-white"><div class="wrap"><div class="fact-layout"><div>{section_label('06','CREDIBILITY')}<h2>Proof over <em>promises.</em></h2></div><div><p class="rich-copy">The current website introduces its team, international partnership, sector focus and a self-reported company-support metric. Detailed client outcomes should only be published when the evidence and permissions are available.</p><a class="text-link" href="about.html">Company and team {icon('arrowup')}</a></div></div></div></section>'''+cta()
-write('index','Strategy, Capital & Saudi Market Entry','Elevate Arabia business advisory, venture building, capital readiness and Saudi market entry in one integrated platform.',body)
+def num(i):
+    return f'{i:02d}'
 
-# services overview
-service_rows=''.join(f'<article class="capability-row" id="service-{s["slug"]}"><div class="capability-meta"><span>{i+1:02d}</span><span class="tiny-tag">{s["tag"]}</span></div><div><h3>{s["label"]}</h3><p>{s["short"]}</p><div class="capability-examples">{bullet_list(s["needs"][:3])}</div></div><a href="{s["slug"]}.html" class="circle-link" aria-label="Explore {s["label"]}">{icon("arrowup")}</a></article>' for i,s in enumerate(services))
-body=f'''<section class="page-hero"><div class="wrap">{section_label('CAPABILITIES','OVERVIEW')}<h1>Business support,<br><em>connected end to end.</em></h1><p>Strategy, commercial planning, financial discipline, governance, investment preparation and Saudi market execution—organized so you can find the right expertise quickly.</p></div></section><section class="section section-white"><div class="wrap"><div class="section-heading compact"><h2>Our eight service areas.</h2><p>Content is reorganized from the current Elevate Arabia services offering for easier scanning and navigation.</p></div><div class="capability-list">{service_rows}</div></div></section><section class="section section-soft"><div class="wrap two-column-content"><div>{section_label('APPROACH','CONNECTED SERVICES')}<h2>Not eight separate silos.<br><em>One business journey.</em></h2></div><div><p class="rich-copy">A client may begin with strategy, then need financial structure, governance, investor readiness and market entry. This site makes those adjacent capabilities easy to discover without duplicating the same explanations across pages.</p><div class="process-mini"><span>Strategy</span>{icon('arrow')}<span>Structure</span>{icon('arrow')}<span>Capital</span>{icon('arrow')}<span>Execution</span></div></div></div></section>'''+cta('Need a combination of capabilities?','Describe the business challenge. The team can help determine a suitable starting point.')
-write('services','Services','Explore Elevate Arabia consulting, venture building, capital, Saudi market entry and industrial capabilities.',body)
 
-# Detail pages
-for item in services+[life_sciences]:
-    slug=item['slug']
-    support=''.join(f'<li>{icon("check")}<span>{escape(n)}</span></li>' for n in item['needs'])
-    challenge=''.join(f'<li><span>{i+1:02d}</span><p>{escape(ch)}</p></li>' for i,ch in enumerate(item['challenges']))
-    outcomes=''.join(f'<div class="outcome-tile"><span>{i+1:02d}</span><h3>{escape(x)}</h3></div>' for i,x in enumerate(item['deliverables']))
-    faqs=''.join(f'<details class="faq-item"><summary>{escape(q)} <span class="faq-symbol">+</span></summary><p>{escape(a)}</p></details>' for q,a in item['faq'])
-    other=''.join(service_card(s,i+1) for i,s in enumerate([s for s in services if s['slug']!=slug][:3]))
-    body=f'''<section class="page-hero detail-hero"><div class="wrap"><nav aria-label="Breadcrumb" class="breadcrumbs"><a href="index.html">Home</a><span>/</span><a href="{'sectors.html' if slug=='life-sciences' else 'services.html'}">{'Industries' if slug=='life-sciences' else 'Services'}</a><span>/</span><strong>{escape(item['label'])}</strong></nav>{section_label('EXPERTISE',item['tag'])}<h1>{escape(item['title'])}</h1><p>{escape(item['intro'])}</p><div class="button-row"><a href="contact.html?interest={slug}" class="button button-red">Discuss this capability {icon('arrowup')}</a><a href="#what-we-do" class="button button-outline">Explore support {icon('arrow')}</a></div></div></section>
-<section class="section section-white"><div class="wrap two-column-content"><div>{section_label('01','OVERVIEW')}<h2>Designed for <em>practical progress.</em></h2></div><div><p class="rich-copy">{escape(item['overview'])}</p><div class="quote-line">One connected view of strategy, governance, finance and execution.</div></div></div></section>
-<section class="section section-soft" id="what-we-do"><div class="wrap"><div class="section-heading">{section_label('02','WHAT WE SUPPORT')}<div class="heading-flex"><h2>Where we can help.</h2><p>These focus areas are based on Elevate Arabia's publicly described offering.</p></div></div><ul class="support-grid">{support}</ul></div></section>
-<section class="section section-white"><div class="wrap"><div class="section-heading">{section_label('03','COMMON CHALLENGES')}<div class="heading-flex"><h2>What needs to <em>work better?</em></h2><p>Issues this service is positioned to address—not claims about specific clients.</p></div></div><ol class="challenge-list">{challenge}</ol></div></section>
-<section class="section section-soft"><div class="wrap"><div class="section-heading">{section_label('04','ENGAGEMENT OUTPUTS')}<div class="heading-flex"><h2>Clearer plans.<br><em>Actionable outcomes.</em></h2><p>Illustrative outputs; the actual scope of an engagement would need to be agreed with Elevate Arabia.</p></div></div><div class="outcome-grid">{outcomes}</div></div></section>
-<section class="section section-white"><div class="wrap faq-layout"><div>{section_label('05','QUESTIONS')}<h2>Good to know.</h2></div><div class="faq-list">{faqs}</div></div></section>
-<section class="section section-soft"><div class="wrap"><div class="section-heading compact"><h2>Related expertise</h2><p>Explore capabilities that may complement this service.</p></div><div class="services-grid services-grid--three">{other}</div></div></section>'''+cta('Have a specific challenge in mind?','Share your objectives and the team can discuss the relevant workstreams.','Enquire about this service')
-    write(slug,item['label'],item['intro'],body)
+def section(eyebrow, heading, body, intro='', id=None, footer=''):
+    """Two-column editorial section: heading on the left, content on the right."""
+    id_attr = f' id="{id}"' if id else ''
+    intro_html = f'<p class="section-intro">{e(intro)}</p>' if intro else ''
+    footer_html = f'<div class="section-foot">{footer}</div>' if footer else ''
+    return f'''
+<section class="section"{id_attr}>
+  <div class="wrap split">
+    <div class="split__head">
+      <p class="eyebrow">{e(eyebrow)}</p>
+      <h2>{hl(heading)}</h2>
+      {intro_html}
+    </div>
+    <div class="split__body">
+      {body}
+      {footer_html}
+    </div>
+  </div>
+</section>'''
 
-# sectors
-sector_cards=''.join(f'<article class="industry-card" data-industry-card data-category="{s["category"]}" id="{s["slug"]}"><div><span class="mini-label">{escape(s["category"])}</span><h3>{escape(s["label"])}</h3><p>{escape(s["desc"])}</p></div><a class="text-link" href="{s["link"]}">View relevant expertise {icon("arrowup")}</a></article>' for s in sectors)
-body=f'''<section class="page-hero"><div class="wrap">{section_label('SECTORS','INDUSTRIES')}<h1>Sector expertise,<br><em>commercial perspective.</em></h1><p>Different sectors face different market realities. The foundations of sound planning, finance, governance and execution remain essential in each.</p></div></section><section class="section section-white"><div class="wrap"><div class="section-heading">{section_label('01','SECTOR AREAS')}<div class="heading-flex"><h2>Where we work.</h2><p>Filter seven focus sectors from the public website by broader business theme.</p></div></div><div class="filter-tabs" role="group" aria-label="Filter industries"><button class="filter-btn is-selected" data-filter="All" aria-pressed="true">All sectors</button><button class="filter-btn" data-filter="Industry" aria-pressed="false">Industry</button><button class="filter-btn" data-filter="Innovation" aria-pressed="false">Innovation</button><button class="filter-btn" data-filter="Capital" aria-pressed="false">Capital</button><button class="filter-btn" data-filter="Consumer" aria-pressed="false">Consumer</button></div><div class="industry-grid">{sector_cards}</div><p id="filter-empty" class="empty-state" hidden>No sectors match this filter.</p></div></section><section class="section section-soft"><div class="wrap two-column-content"><div>{section_label('02','WHY IT MATTERS')}<h2>Different sectors.<br><em>Shared disciplines.</em></h2></div><div><p class="rich-copy">Sector familiarity supports better commercial assumptions and investment preparation. Elevate Arabia combines this context with business modelling, capital readiness and Saudi market execution.</p><a href="life-sciences.html" class="text-link strong">Explore life sciences detail {icon('arrowup')}</a></div></div></section>'''+cta('Working in a specialized sector?','Tell us about the sector, geography and stage of your project.','Discuss your sector')
-write('sectors','Industries','Explore sectors served by Elevate Arabia across life sciences, technology, finance, education, sustainability and consumer businesses.',body)
 
-# about
-values_html=''.join(f'<article class="value-item"><span>{i+1:02d}</span><div><h3>{escape(label)}</h3><p>{escape(desc)}</p></div></article>' for i,(label,desc) in enumerate(values))
-team_html=lambda arr: ''.join(f'<div class="team-person"><span class="team-avatar" aria-hidden="true">{escape("".join(v[0] for v in n.split()[:2]))}</span><div><h3>{escape(n)}</h3><p>{escape(role)}</p></div></div>' for n,role in arr)
-body=f'''<section class="page-hero"><div class="wrap">{section_label('COMPANY','ABOUT ELEVATE')}<h1>A strategic growth &<br><em>integrated advisory firm.</em></h1><p>Elevate Arabia supports businesses, ventures and investors through connected strategy, finance, governance, coordination and execution support.</p></div></section><section class="section section-white"><div class="wrap two-column-content"><div>{section_label('01','WHO WE ARE')}<h2>Clarity, control <em>and confidence.</em></h2><p class="rich-copy">The company positions itself as commercially focused, integrated across disciplines and oriented toward execution. Its work spans established companies as well as new ventures pursuing Saudi growth opportunities.</p></div><div class="about-statement"><span class="mini-label">CORE BELIEF</span><p>From concept and capital preparation to commercialization and operations, a stronger business starts with the right structure.</p></div></div></section><section class="section section-soft"><div class="wrap"><div class="section-heading">{section_label('02','VALUES')}<div class="heading-flex"><h2>How we work.</h2><p>Six themes identified on the current public About page, reorganized for clarity.</p></div></div><div class="values-grid">{values_html}</div></div></section><section class="section section-white" id="partnership"><div class="wrap two-column-content"><div>{section_label('03','INTERNATIONAL PARTNERSHIP')}<h2>A shared focus on <em>improvement.</em></h2><p class="rich-copy">The site names Japan-based Hirayama Holdings as a strategic international partner and highlights Gemba Kaizen, manufacturing performance and continuous improvement. Specific partnership scope and client references should be verified before launch.</p></div><div class="partner-feature"><span class="mini-label">INTERNATIONAL PARTNER</span><strong>HIRAYAMA</strong><span>HOLDINGS CO., LTD.</span><p>Japan · Manufacturing capability, continuous improvement and industrial consulting.</p></div></div></section><section class="section section-soft"><div class="wrap"><div class="section-heading">{section_label('04','THE PEOPLE')}<div class="heading-flex"><h2>Experience behind <em>the work.</em></h2><p>Names and roles listed on the public website. Review roles, portraits and permissions with the company before publication.</p></div></div><div class="team-section"><h3>Saudi Arabia team <span>{len(team_saudi)} people</span></h3><div class="team-grid">{team_html(team_saudi)}</div></div><details class="team-disclosure"><summary>Show Japan / International team <span>{len(team_japan)} people · +</span></summary><div class="team-grid">{team_html(team_japan)}</div></details></div></section>'''+cta('Work with Elevate Arabia.','Discuss a business challenge, potential engagement or partnership opportunity.','Contact our team')
-write('about','About Us','Meet Elevate Arabia and learn about its strategy, advisory approach, international partner and leadership.',body)
+def page_hero(eyebrow, title, lead, actions='', crumbs=None, extra=''):
+    crumbs_html = ''
+    if crumbs:
+        items = ''.join(f'<li><a href="{e(h)}">{e(t)}</a></li>' for t, h in crumbs[:-1])
+        items += f'<li><span aria-current="page">{e(crumbs[-1][0])}</span></li>'
+        crumbs_html = f'<nav class="breadcrumb" aria-label="Breadcrumb"><ol>{items}</ol></nav>'
+    actions_html = f'<div class="actions">{actions}</div>' if actions else ''
+    return f'''
+<section class="hero">
+  <div class="wrap">
+    {crumbs_html}
+    <p class="eyebrow">{e(eyebrow)}</p>
+    <h1>{hl(title)}</h1>
+    <p class="lead">{e(lead)}</p>
+    {actions_html}
+    {extra}
+  </div>
+</section>'''
 
-# contact
-contact=f'''<section class="page-hero"><div class="wrap">{section_label('CONTACT','GET IN TOUCH')}<h1>Let’s discuss <em>your next move.</em></h1><p>Whether you are entering Saudi Arabia, building a venture, or preparing for investment, start with a clear conversation.</p></div></section><section class="section section-white"><div class="wrap contact-layout"><div><div class="mini-label">DIRECT CONTACT</div><h2>Tell us what<br><em>you’re building.</em></h2><p class="rich-copy">Use the enquiry form to organize your message, or contact the team using the details currently shown on the public website.</p><div class="contact-options"><a href="mailto:ceo@elevatearabia.com">{icon('mail')}<span><small>Email</small><strong>ceo@elevatearabia.com</strong></span></a><a href="mailto:os@elevatearabia.com">{icon('mail')}<span><small>Alternative email</small><strong>os@elevatearabia.com</strong></span></a><a href="tel:+966533337712">{icon('phone')}<span><small>Telephone</small><strong>+966 53 333 7712</strong></span></a><a href="tel:+966562211666">{icon('phone')}<span><small>Telephone</small><strong>+966 56 221 1666</strong></span></a><div>{icon('pin')}<span><small>Office</small><strong>7th Floor, Sultan Center, Madinah Road, Jeddah, Saudi Arabia</strong></span></div></div></div><div class="form-panel"><form id="enquiry-form" novalidate><span class="mini-label">PROJECT ENQUIRY</span><h3>Start a conversation</h3><p class="form-hint">This prototype prepares an email in your mail app; it does not transmit or store your details on a server.</p><div class="form-row"><div class="field"><label for="contact-name">Full name <span>*</span></label><input required name="name" id="contact-name" autocomplete="name" placeholder="Your full name"><span class="field-error" aria-live="polite"></span></div><div class="field"><label for="contact-email">Work email <span>*</span></label><input required type="email" name="email" id="contact-email" autocomplete="email" placeholder="you@company.com"><span class="field-error" aria-live="polite"></span></div></div><div class="form-row"><div class="field"><label for="contact-company">Company</label><input name="company" id="contact-company" autocomplete="organization" placeholder="Company name"></div><div class="field"><label for="contact-phone">Phone</label><input type="tel" name="phone" id="contact-phone" autocomplete="tel" placeholder="+966 ..."></div></div><div class="field"><label for="contact-interest">How can we help? <span>*</span></label><select required name="interest" id="contact-interest"><option value="">Choose a service</option>{''.join(f'<option value="{s["slug"]}">{escape(s["label"])}</option>' for s in services)}<option value="life-sciences">Life Sciences & Healthcare</option><option value="other">Other enquiry</option></select><span class="field-error" aria-live="polite"></span></div><div class="field"><label for="contact-message">Project details <span>*</span></label><textarea required minlength="20" name="message" id="contact-message" placeholder="Briefly describe your objectives, current stage and the support you need."></textarea><span class="field-error" aria-live="polite"></span></div><label class="check-field"><input required type="checkbox" name="consent" id="consent"><span>I understand this demo opens my email application and I will review the message before sending.</span></label><div id="form-feedback" class="form-feedback" role="status" aria-live="polite"></div><button class="button button-red submit-button" type="submit">Prepare enquiry email {icon('arrowup')}</button></form></div></div></section>'''
-write('contact','Contact','Contact Elevate Arabia in Jeddah to discuss business advisory, capital readiness, ventures or Saudi market entry.',contact)
 
-# legal pages clearly redirect to source
-for slug,title,summary,url in [('privacy','Privacy Policy','Privacy commitments, how enquiry data may be used, and contact details for privacy requests.','https://www.elevatearabia.com/privacy-policy'),('terms','Terms & Conditions','Website terms, informational disclaimers, legal limitations and use conditions.','https://www.elevatearabia.com/terms-and-coniditions')]:
-    body=f'''<section class="page-hero"><div class="wrap">{section_label('LEGAL','SOURCE DOCUMENT')}<h1>{title}</h1><p>{summary}</p></div></section><section class="section section-white"><div class="wrap legal-explainer"><h2>Read the current approved version.</h2><p class="rich-copy">The authoritative policy is hosted by Elevate Arabia. This redesign does not republish a legal document or imply the content has been reviewed for this new implementation.</p><a class="button button-red" href="{url}" target="_blank" rel="noopener noreferrer">Open the official {title} {icon('arrowup')}</a><p class="legal-note">Before deployment, confirm the legal text, date, data processing disclosures and any obligations introduced by the new contact form or analytics.</p></div></section>'''
-    write(slug,title,summary,body)
+def rows(items):
+    """Hairline list. item = dict(title, desc, href=None, num=None, meta=None, extra=None)."""
+    out = []
+    for it in items:
+        num_html = f'<span class="row__num">{e(it["num"])}</span>' if it.get('num') else ''
+        kicker = f'<span class="row__kicker">{e(it["meta"])}</span>' if it.get('meta') else ''
+        extra = it.get('extra', '')
+        inner = (f'{num_html}<span class="row__main">{kicker}<span class="row__title">{e(it["title"])}</span>'
+                 f'<span class="row__desc">{e(it["desc"])}</span>{extra}</span>')
+        if it.get('href'):
+            out.append(f'<li class="row"><a class="row__link" href="{e(it["href"])}">{inner}'
+                       f'{icon("arrow", "icon row__arrow")}</a></li>')
+        else:
+            id_attr = f' id="{it["id"]}"' if it.get('id') else ''
+            out.append(f'<li class="row"{id_attr}><div class="row__link row__link--static">{inner}</div></li>')
+    cls = 'rows' + (' rows--numbered' if any(i.get('num') for i in items) else '')
+    return f'<ul class="{cls}">' + ''.join(out) + '</ul>'
 
-# Design system / components showcase
-kit='''<section class="page-hero"><div class="wrap"><div class="kicker"><span>UI</span> DESIGN SYSTEM</div><h1>Elevate Arabia<br><em>Interface library.</em></h1><p>Design tokens, reusable components and interaction conventions behind this responsive prototype.</p></div></section><section class="section section-white"><div class="wrap"><div class="section-heading compact"><h2>01 / Color foundation</h2><p>Deep Navy, Soft Gray and Muted Red. Red is used primarily for calls to action and small emphasis.</p></div><div class="swatches"><div><span style="background:#142536"></span><strong>Deep Navy</strong><code>#142536</code><p>Primary headings, navigation and dark panels</p></div><div><span style="background:#F4F6F7"></span><strong>Soft Gray</strong><code>#F4F6F7</code><p>Secondary section backgrounds</p></div><div><span style="background:#BD3F43"></span><strong>Muted Red</strong><code>#BD3F43</code><p>CTA, focus indicators and accents</p></div><div><span style="background:#FFFFFF;border:1px solid #dde4e8"></span><strong>White</strong><code>#FFFFFF</code><p>Canvas and card surfaces</p></div><div><span style="background:#5D6D7C"></span><strong>Slate</strong><code>#5D6D7C</code><p>Supporting text</p></div></div></div></section><section class="section section-soft"><div class="wrap"><div class="section-heading compact"><h2>02 / Typography</h2><p>System sans stack for fast, consistent rendering without external font loading.</p></div><div class="type-samples"><h1>Business, built properly.</h1><h2>A clear direction for growth.</h2><h3>Section heading · 28 pixels</h3><p class="rich-copy">Body text · generous line height and restrained paragraph width for readability.</p><span class="mini-label">SMALL LABEL / WIDE TRACKING</span></div></div></section><section class="section section-white"><div class="wrap"><div class="section-heading compact"><h2>03 / Buttons and links</h2></div><div class="kit-row"><a href="contact.html" class="button button-red">Primary action →</a><a href="services.html" class="button button-outline">Secondary action →</a><a href="about.html" class="text-link strong">Text link ↗</a><button class="button button-red" disabled>Disabled button</button></div></div></section><section class="section section-soft"><div class="wrap"><div class="section-heading compact"><h2>04 / Content cards</h2></div><div class="services-grid services-grid--three">'''+''.join(service_card(s,i+1) for i,s in enumerate(services[:3]))+'''</div></div></section><section class="section section-white"><div class="wrap"><div class="section-heading compact"><h2>05 / Disclosure and form components</h2><p>Native HTML disclosure, validated text field, selectable filters and keyboard-friendly navigation.</p></div><div class="two-column-content"><div class="faq-list"><details class="faq-item"><summary>What makes the interface accessible? <span class="faq-symbol">+</span></summary><p>Semantic landmarks, visible keyboard focus, skip link, labeled controls, and reduced-motion support.</p></details><details class="faq-item"><summary>How do service pages stay consistent? <span class="faq-symbol">+</span></summary><p>Pages are generated from one shared page template and a structured content model.</p></details></div><div class="form-panel"><div class="field"><label for="kit-input">Example field</label><input id="kit-input" placeholder="Type an example value"></div><div class="field"><label for="kit-select">Example select</label><select id="kit-select"><option>Choose an option</option><option>Advisory</option><option>Capital</option></select></div><label class="check-field"><input type="checkbox"> <span>Example checkbox</span></label></div></div></div></section><section class="section section-soft"><div class="wrap"><div class="section-heading compact"><h2>06 / Spacing and behavior</h2></div><div class="spec-grid"><div><b>Layout</b><p>Max content width: 1200px; responsive single and dual column grids.</p></div><div><b>Spacing</b><p>8px base spacing system; desktop section rhythm around 104px.</p></div><div><b>Surfaces</b><p>Restrained borders, 14–24px rounded corners and minimal shadows.</p></div><div><b>Interaction</b><p>Subtle hover motion; reduced-motion preference respected.</p></div><div><b>Mobile</b><p>Single-column content, collapsible navigation, touch-friendly controls.</p></div><div><b>Accessibility</b><p>Keyboard operation, ARIA state, focus indicators and contrast-minded color use.</p></div></div></div></section>'''+cta('Ready to refine the interface?','Use these components as a working baseline for Figma, development and stakeholder review.','Contact Elevate')
-write('design-system','UI Design System','A component and design token reference for the Elevate Arabia website prototype.',kit)
 
-(ROOT/'README.md').write_text(dedent('''
-# Elevate Arabia — Complete responsive UI prototype
+def plain_list(items, numbered=False):
+    tag = 'ol' if numbered else 'ul'
+    cls = 'list list--numbered' if numbered else 'list'
+    return f'<{tag} class="{cls}">' + ''.join(f'<li>{e(x)}</li>' for x in items) + f'</{tag}>'
 
-This is a **static, multi-page website prototype** using a Deep Navy / Soft Gray / Muted Red system. All pages are generated by `build.py` from reusable templates and content models. It runs locally by opening `index.html` in a browser; no npm install or server is required.
 
-## Pages
-- `index.html` — homepage and UX conversion journey
-- `services.html` — all eight public service categories
-- `advisory.html`, `ventures.html`, `capital.html`, `market-entry.html`, `industrial.html`, `construction-technology.html` — focused capabilities
-- `sectors.html` — seven sector categories with interactive filters
-- `life-sciences.html` — detailed industry page
-- `about.html` — company values, partner context, Saudi/international team names and roles
-- `contact.html` — validated email-composition form and verified public contact details
-- `privacy.html`, `terms.html` — links to the source site's current legal text (not legal replicas)
-- `design-system.html` — UI kit / component documentation
+def faq(pairs):
+    return '<div class="faq">' + ''.join(
+        f'<details><summary>{e(q)}</summary><p>{e(a)}</p></details>' for q, a in pairs) + '</div>'
 
-## UI components
-1. Sticky navigation and desktop mega menus
-2. Mobile navigation drawer
-3. Breadcrumbs, page hero, CTA buttons and text links
-4. Reusable service cards, capability rows, sector filters
-5. Partner, trust, values, and team sections
-6. Native disclosure FAQ and team sections
-7. Form controls with client-side validation
-8. Responsive grid, process display, proof band, CTA band, footer
-9. Consistent design tokens (see CSS variables)
 
-## Colors
-- Navy: `#142536`
-- Gray: `#F4F6F7`
-- Red: `#BD3F43`
-- White: `#FFFFFF`
-- Supporting slate: `#5D6D7C`
+def cta(title, body, label, href='contact.html'):
+    return f'''
+<section class="cta">
+  <div class="wrap cta__inner">
+    <div>
+      <h2>{hl(title)}</h2>
+      <p>{e(body)}</p>
+    </div>
+    {button(href, label)}
+  </div>
+</section>'''
 
-## Content and verification
-This redesign reorganizes and **rewrites** factual descriptions from public pages on https://www.elevatearabia.com/ as of November 4, 2026. It is not a word-for-word copy, and not an authorized production release. The "1,500+" metric is a **company-reported claim**, not independently validated. Partner/team descriptions need final stakeholder review; no fabricated client case study is included. The Riyadh hero image is an AI-generated concept from the earlier design, not an authentic photograph of a particular date.
 
-## Functionality and deployment limits
-- The contact form validates fields, then opens the visitor's email client using `mailto:`. It does not store data or send via a server. For production use, integrate an approved secure form endpoint, server-side validation, consent/retention policy and spam protection.
-- The legal pages link to official current pages, and should be reviewed by counsel before launch.
-- Replace the concept skyline with licensed/approved photography if needed.
-- Confirm brand/logo rights, organization claims, employee details and legal disclosure obligations.
-- Test on representative real devices and add analytics only after obtaining appropriate authorization/consent.
+# --------------------------------------------------------------------------- service areas
 
-## Development
-- Edit content in `build.py` and run `python build.py` to regenerate page HTML.
-- Adjust the CSS at `assets/css/styles.css`; interactions in `assets/js/app.js`.
-- No external fonts or front-end dependencies are required.
-''').strip()+'\n', encoding='utf-8')
-print('Generated', len(list(ROOT.glob('*.html'))), 'HTML pages')
+def service_areas():
+    """The eight public service areas, in the live site's order."""
+    areas = []
+    for s in C.SERVICES:
+        if s.get('areas'):
+            for a in s['areas']:
+                areas.append(dict(label=a['label'], short=a['short'], href=f'{s["slug"]}.html#{a["id"]}',
+                                  tag=s['label'], items=a['items']))
+        else:
+            areas.append(dict(label=s['label'], short=s['short'], href=f'{s["slug"]}.html',
+                              tag=s['tag'], items=s['needs']))
+    return areas
+
+
+AREAS = service_areas()
+SERVICE_SLUGS = {s['slug'] for s in C.SERVICES}
+
+
+# --------------------------------------------------------------------------- layout
+
+NAV = [('Services', 'services.html', 'services'), ('Sectors', 'sectors.html', 'sectors'),
+       ('About', 'about.html', 'about')]
+
+
+def section_of(slug):
+    if slug in SERVICE_SLUGS or slug == 'services':
+        return 'services'
+    if slug in ('sectors', 'life-sciences'):
+        return 'sectors'
+    return slug
+
+
+def layout(slug, title, description, body):
+    current = section_of(slug)
+    filename = 'index.html' if slug == 'index' else f'{slug}.html'
+    full_title = f'{C.SITE["name"]}: {title}' if slug == 'index' else f'{title} | {C.SITE["name"]}'
+
+    def nav_link(label, href, key):
+        cur = ' aria-current="page"' if key == current else ''
+        return f'<a href="{href}"{cur}>{label}</a>'
+
+    nav = ''.join(nav_link(*n) for n in NAV)
+    contact_cur = ' aria-current="page"' if current == 'contact' else ''
+
+    head_extra = []
+    base = ''
+    if slug == '404' and SITE_URL:
+        # GitHub Pages serves 404.html at any missing path, including nested ones,
+        # so pin relative URLs to the site root.
+        base = f'<base href="{e(SITE_URL)}/">\n'
+    if SITE_URL:
+        url = f'{SITE_URL}/' if slug == 'index' else f'{SITE_URL}/{filename}'
+        head_extra += [f'<link rel="canonical" href="{e(url)}">', f'<meta property="og:url" content="{e(url)}">']
+    if not INDEXABLE or slug == '404':
+        head_extra.append('<meta name="robots" content="noindex">')
+
+    service_links = ''.join(f'<li><a href="{s["slug"]}.html">{e(s["label"])}</a></li>' for s in C.SERVICES)
+    emails = ''.join(f'<li><a href="mailto:{m}">{m}</a></li>' for m in C.SITE['emails'])
+    phones = ''.join(f'<li><a href="tel:{t}">{e(p)}</a></li>' for p, t in C.SITE['phones'])
+
+    return f'''<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+{base}<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{e(full_title)}</title>
+<meta name="description" content="{e(description)}">
+<meta name="theme-color" content="#ffffff">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{e(C.SITE["name"])}">
+<meta property="og:title" content="{e(full_title)}">
+<meta property="og:description" content="{e(description)}">
+{chr(10).join(head_extra)}
+<link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/styles.css">
+<script>document.documentElement.classList.add('js')</script>
+<script src="assets/js/app.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap site-header__inner">
+    <a class="brand" href="index.html"><span class="brand__mark" aria-hidden="true"></span>Elevate Arabia</a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">{icon("menu", "icon icon--menu")}{icon("close", "icon icon--close")}</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+      {nav}
+      <a class="button button--sm" href="contact.html"{contact_cur}>Contact</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+{body}
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="index.html"><span class="brand__mark" aria-hidden="true"></span>Elevate Arabia</a>
+        <p class="footer-tagline">{e(C.SITE["tagline"])}</p>
+      </div>
+      <div>
+        <h2 class="footer-title">Services</h2>
+        <ul>{service_links}</ul>
+      </div>
+      <div>
+        <h2 class="footer-title">Company</h2>
+        <ul><li><a href="about.html">About</a></li><li><a href="sectors.html">Sectors</a></li><li><a href="life-sciences.html">Life Sciences</a></li><li><a href="contact.html">Contact</a></li></ul>
+      </div>
+      <div>
+        <h2 class="footer-title">Contact</h2>
+        <ul>{emails}{phones}</ul>
+        <p class="footer-address">{"<br>".join(e(x) for x in C.SITE["address"])}</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© {YEAR} {e(C.SITE["name"])}</span>
+      <span><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms &amp; Conditions</a></span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
+'''
+
+
+PAGES = {}
+
+
+def page(slug, title, description, body):
+    PAGES['index.html' if slug == 'index' else f'{slug}.html'] = layout(slug, title, description, body)
+
+
+# --------------------------------------------------------------------------- pages
+
+def build_home():
+    stats = '<dl class="stats">' + ''.join(
+        f'<div class="stat"><dt>{e(v)}</dt><dd>{e(l)}</dd></div>' for v, l in C.STATS) + '</dl>'
+    hero = page_hero(
+        'Strategy · Capital · Market entry',
+        'Building companies, capital pathways [and market‑ready ventures.]',
+        'Elevate Arabia helps businesses, founders and investors structure, finance, govern and scale their '
+        'operations in Saudi Arabia through integrated advisory, capital readiness, venture support and '
+        'market-entry execution.',
+        actions=button('contact.html', 'Discuss a project') + link_arrow('services.html', 'Explore services'),
+        extra=stats)
+
+    services = section(
+        'Services', 'Built around the challenges [you need to solve.]',
+        rows([dict(num=num(i + 1), title=a['label'], desc=a['short'], href=a['href']) for i, a in enumerate(AREAS)]),
+        intro='Rather than separate disciplines, we join business direction, financial structure and '
+              'implementation into one connected approach.',
+        footer=link_arrow('services.html', 'All services'))
+
+    steps = '<ol class="steps">' + ''.join(
+        f'<li class="step"><span class="step__num">{num(i + 1)}</span><h3>{e(t)}</h3><p>{e(d)}</p></li>'
+        for i, (t, d) in enumerate(C.STEPS)) + '</ol>'
+    approach = section('How we work', 'From complexity [to clarity.]', steps,
+                       intro='Every engagement is different, but the work generally moves from understanding '
+                             'the problem to building the right structure and supporting execution.')
+
+    who = section(
+        'Who we are', 'One integrated perspective. [Multiple disciplines.]',
+        f'''<p class="body-lg">We work with established firms, entrepreneurs and investors, combining commercial
+        planning, financial discipline, governance and sector understanding, with a focus on execution rather
+        than advice in isolation.</p>
+        <div class="panel">
+          <p class="eyebrow">International partner</p>
+          <p class="panel__title">Hirayama Holdings</p>
+          <p>Our Japan-based strategic partner brings manufacturing improvement and Gemba Kaizen expertise.</p>
+          {link_arrow('about.html#partnership', 'Our partnership')}
+        </div>''',
+        footer=link_arrow('about.html', 'About Elevate Arabia'))
+
+    sectors = section(
+        'Sectors', 'Sector familiarity. [Business discipline.]',
+        rows([dict(num=num(i + 1), title=s['label'], desc=s['desc'], href=f'sectors.html#{s["slug"]}')
+              for i, s in enumerate(C.SECTORS)]),
+        intro='We apply advisory and business-building capabilities across innovation, advanced industry '
+              'and Saudi growth sectors.',
+        footer=link_arrow('sectors.html', 'All sectors'))
+
+    body = hero + services + approach + who + sectors + cta(
+        'Let’s build what comes next.',
+        'Talk to the team about your business, investment or Saudi market opportunity.', 'Discuss a project')
+    page('index', 'Strategy, capital and Saudi market entry',
+         'Elevate Arabia helps businesses, founders and investors structure, finance, govern and scale '
+         'their operations in Saudi Arabia.', body)
+
+
+def build_services():
+    hero = page_hero(
+        'Services', 'Business support, [connected end to end.]',
+        'Strategy, commercial planning, financial discipline, governance, investment preparation and Saudi '
+        'market execution, organized so you can find the right expertise quickly.')
+    listing = section(
+        'Service areas', 'Eight service areas.',
+        rows([dict(num=num(i + 1), title=a['label'], desc=a['short'], href=a['href'], meta=a['tag'],
+                   extra='<span class="row__tags">' + ''.join(f'<span>{e(x)}</span>' for x in a['items'][:3]) + '</span>')
+              for i, a in enumerate(AREAS)]),
+        intro='Explore each area, or talk to us about a combination.')
+    journey = section(
+        'Approach', 'Not eight separate silos. [One business journey.]',
+        '<p class="body-lg">A client may begin with strategy, then need financial structure, governance, '
+        'investor readiness and market entry. We bring these together so each step builds on the last.</p>'
+        '<p class="journey"><span>Strategy</span><span>Structure</span><span>Capital</span><span>Execution</span></p>')
+    page('services', 'Services',
+         'Advisory, ventures, capital, Saudi market entry, automotive industrial consultancy and construction '
+         'technology from Elevate Arabia.',
+         hero + listing + journey + cta('Need a combination of capabilities?',
+                                        'Describe the business challenge and we can help determine a suitable '
+                                        'starting point.', 'Discuss a project'))
+
+
+def build_detail(item, is_sector=False):
+    slug = item['slug']
+    parent = ('Sectors', 'sectors.html') if is_sector else ('Services', 'services.html')
+    hero = page_hero(
+        item['tag'], item['title'], item['intro'],
+        actions=button(f'contact.html?interest={slug}', 'Discuss this service' if not is_sector else 'Discuss your project')
+        + link_arrow('#support', 'Where we can help'),
+        crumbs=[('Home', 'index.html'), parent, (item['label'], '')])
+
+    overview = section('Overview', 'Designed for [practical progress.]', f'<p class="body-lg">{e(item["overview"])}</p>')
+
+    if item.get('areas'):
+        support_body = '<div class="areas">' + ''.join(
+            f'<div class="area" id="{a["id"]}"><span class="area__num">{num(i + 1)}</span><h3>{e(a["label"])}</h3>'
+            f'<p>{e(a["short"])}</p>{plain_list(a["items"])}</div>'
+            for i, a in enumerate(item['areas'])) + '</div>'
+    else:
+        support_body = plain_list(item['needs'])
+    support = section('What we support', 'Where we can help.', support_body, id='support')
+
+    outcomes = section(
+        'Challenges & outcomes', 'What needs to [work better?]',
+        f'''<div class="cols">
+          <div><h3>Common challenges</h3><p class="small">Typical issues we help resolve.</p>{plain_list(item["challenges"], numbered=True)}</div>
+          <div><h3>Typical outputs</h3><p class="small">Every engagement is scoped to your situation.</p>{plain_list(item["deliverables"], numbered=True)}</div>
+        </div>''')
+
+    questions = section('Questions', 'Good to know.', faq(item['faq']))
+
+    related_items = [s for s in C.SERVICES if s['slug'] != slug][:3]
+    related = section('Related', 'Related services.',
+                      rows([dict(title=s['label'], desc=s['short'], href=f'{s["slug"]}.html') for s in related_items]))
+
+    body = hero + overview + support + outcomes + questions + related + cta(
+        'Have a specific challenge in mind?',
+        'Share your objectives and the team can discuss the relevant workstreams.',
+        'Enquire about this service' if not is_sector else 'Discuss your project',
+        href=f'contact.html?interest={slug}')
+    page(slug, item['label'], item['intro'], body)
+
+
+def build_sectors():
+    hero = page_hero(
+        'Sectors', 'Sector expertise, [commercial perspective.]',
+        'Different sectors face different market realities. The foundations of sound planning, finance, '
+        'governance and execution remain essential in each.')
+
+    items = []
+    for i, s in enumerate(C.SECTORS):
+        extra = (f'<span class="row__more">{link_arrow(s["link"], s["link_label"])}</span>' if s['link'] else '')
+        items.append(dict(id=s['slug'], num=num(i + 1), title=s['label'], desc=s['desc'], meta=s['category'], extra=extra))
+    listing = section('Focus sectors', 'Where we work.', rows(items),
+                      intro='Seven focus sectors across innovation, industry, capital and consumer markets.')
+    why = section(
+        'Why it matters', 'Different sectors. [Shared disciplines.]',
+        '<p class="body-lg">Sector familiarity supports better commercial assumptions and investment '
+        'preparation. We combine this context with business modelling, capital readiness and Saudi market '
+        'execution.</p>',
+        footer=link_arrow('life-sciences.html', 'Life sciences in detail'))
+    page('sectors', 'Sectors',
+         'Sectors served by Elevate Arabia, from life sciences and advanced industry to education, '
+         'agriculture, media and national development.',
+         hero + listing + why + cta('Working in a specialized sector?',
+                                    'Tell us about the sector, geography and stage of your project.',
+                                    'Discuss your sector'))
+
+
+def build_about():
+    hero = page_hero(
+        'About', 'A strategic growth and [integrated advisory firm.]',
+        'Elevate Arabia supports businesses, ventures and investors through connected strategy, finance, '
+        'governance, coordination and execution support.')
+    who = section(
+        'Who we are', 'Clarity, control [and confidence.]',
+        '<p class="body-lg">We are commercially focused, integrated across disciplines and oriented toward '
+        'execution. We work with established companies and with new ventures pursuing growth in Saudi Arabia.</p>'
+        '<blockquote class="statement"><p>From concept and capital preparation to commercialization and '
+        'operations, a stronger business starts with the right structure.</p></blockquote>')
+    values = section(
+        'Values', 'How we work.',
+        '<ul class="grid-values">' + ''.join(
+            f'<li><span class="area__num">{num(i + 1)}</span><h3>{e(t)}</h3><p>{e(d)}</p></li>'
+            for i, (t, d) in enumerate(C.VALUES)) + '</ul>')
+    partner = section(
+        'International partnership', 'A shared focus on [improvement.]',
+        '<p class="body-lg">Japan-based Hirayama Holdings is our strategic international partner, with a focus on '
+        'Gemba Kaizen, manufacturing performance and continuous improvement.</p>'
+        '<div class="panel"><p class="eyebrow">International partner</p>'
+        '<p class="panel__title">Hirayama Holdings Co., Ltd.</p>'
+        '<p>Japan. Manufacturing capability, continuous improvement and industrial consulting.</p></div>',
+        id='partnership')
+
+    def people(arr):
+        return '<ul class="people">' + ''.join(
+            f'<li><span class="people__name">{e(n)}</span><span class="people__role">{e(r)}</span></li>'
+            for n, r in arr) + '</ul>'
+
+    team = section(
+        'Team', 'Experience behind [the work.]',
+        f'<h3 class="group-title">Saudi Arabia <span>{len(C.TEAM_SAUDI)}</span></h3>{people(C.TEAM_SAUDI)}'
+        f'<h3 class="group-title">International <span>{len(C.TEAM_INTERNATIONAL)}</span></h3>{people(C.TEAM_INTERNATIONAL)}',
+        intro='Our team in Saudi Arabia, supported by international specialists in manufacturing and '
+              'continuous improvement.', id='team')
+    page('about', 'About',
+         'Elevate Arabia is a strategic growth and integrated advisory firm in Jeddah, working with businesses, '
+         'founders and investors.',
+         hero + who + values + partner + team + cta('Work with Elevate Arabia.',
+                                                    'Discuss a business challenge, potential engagement or '
+                                                    'partnership opportunity.', 'Contact the team'))
+
+
+def build_contact():
+    hero = page_hero(
+        'Contact', 'Let’s discuss [your next move.]',
+        'Whether you are entering Saudi Arabia, building a venture or preparing for investment, start with a '
+        'clear conversation.')
+
+    options = [(s['slug'], s.get('option', s['label'])) for s in C.SERVICES]
+    options += [('life-sciences', C.LIFE_SCIENCES['label']), ('other', 'Something else')]
+    opts = ''.join(f'<option value="{v}">{e(l)}</option>' for v, l in options)
+
+    def field(fid, label, control, required=False, hint=''):
+        req = ' <span class="req" aria-hidden="true">*</span>' if required else ''
+        hint_html = f'<p class="field-hint" id="{fid}-hint">{e(hint)}</p>' if hint else ''
+        return (f'<div class="field"><label for="{fid}">{e(label)}{req}</label>{hint_html}{control}'
+                f'<p class="field-error" id="{fid}-error"></p></div>')
+
+    def described(fid, hint=False):
+        ids = ([f'{fid}-hint'] if hint else []) + [f'{fid}-error']
+        return f'aria-describedby="{" ".join(ids)}"'
+
+    form = f'''
+<form class="form" id="enquiry-form" novalidate data-to="{e(C.SITE["enquiry_email"])}">
+  <p class="small">Fields marked <span class="req" aria-hidden="true">*</span><span class="visually-hidden">with an asterisk</span> are required.</p>
+  <div class="form-row">
+    {field('f-name', 'Full name', f'<input id="f-name" name="name" autocomplete="name" required {described("f-name")} data-required="Please enter your name.">', True)}
+    {field('f-email', 'Email', f'<input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" required {described("f-email")} data-required="Please enter your email address.">', True)}
+  </div>
+  <div class="form-row">
+    {field('f-company', 'Company', '<input id="f-company" name="company" autocomplete="organization">')}
+    {field('f-phone', 'Phone', '<input id="f-phone" name="phone" type="tel" autocomplete="tel">')}
+  </div>
+  {field('f-interest', 'How can we help?', f'<select id="f-interest" name="interest" required {described("f-interest")} data-required="Please choose a service."><option value="">Choose a service</option>{opts}</select>', True)}
+  {field('f-message', 'Project details', f'<textarea id="f-message" name="message" rows="6" minlength="20" required {described("f-message", True)} data-required="Please tell us a little about your project."></textarea>', True, hint='Your objectives, current stage and the support you need.')}
+  <div class="form-status" id="form-status" role="status" aria-live="polite"></div>
+  <button class="button" type="submit">Prepare email</button>
+  <p class="small">This opens a pre-filled email in your mail app so you can review it before sending. Nothing is stored on this website. See our <a href="privacy.html">Privacy Policy</a>.</p>
+</form>'''
+
+    details = '<dl class="contact-list">' + ''.join(
+        f'<div><dt>Email</dt><dd><a href="mailto:{m}">{m}</a></dd></div>' for m in C.SITE['emails']) + ''.join(
+        f'<div><dt>Phone</dt><dd><a href="tel:{t}">{e(p)}</a></dd></div>' for p, t in C.SITE['phones']) + (
+        f'<div><dt>Office</dt><dd>{", ".join(e(x) for x in C.SITE["address"])}</dd></div></dl>')
+
+    body = hero + f'''
+<section class="section">
+  <div class="wrap split">
+    <div class="split__head">
+      <p class="eyebrow">Direct contact</p>
+      <h2>{hl('Tell us what [you’re building.]')}</h2>
+      {details}
+    </div>
+    <div class="split__body">
+      <h2 class="visually-hidden">Enquiry form</h2>
+      {form}
+    </div>
+  </div>
+</section>'''
+    page('contact', 'Contact',
+         'Contact Elevate Arabia in Jeddah about advisory, ventures, capital readiness or Saudi market entry.', body)
+
+
+def build_legal():
+    for slug, title, summary in [
+        ('privacy', 'Privacy Policy', 'How we handle enquiry data, and how to contact us about privacy.'),
+        ('terms', 'Terms & Conditions', 'The terms that apply to using this website.'),
+    ]:
+        url = C.SITE['legal'][slug]
+        body = page_hero('Legal', title, summary) + section(
+            'Current version', f'Read our {title}.',
+            f'<p class="body-lg">The current version of our {e(title)} is published on elevatearabia.com.</p>'
+            f'<div class="actions">{link_arrow(url, f"Open the {title}", external=True)}</div>'
+            f'<p class="small">Questions? Email <a href="mailto:{C.SITE["enquiry_email"]}">{C.SITE["enquiry_email"]}</a>.</p>')
+        page(slug, title, summary, body)
+
+
+def build_404():
+    body = page_hero('Error 404', 'Page not found.',
+                     'The page you are looking for does not exist or has moved.',
+                     actions=button('index.html', 'Back to home') + link_arrow('contact.html', 'Contact us'))
+    page('404', 'Page not found', 'The page you are looking for does not exist or has moved.', body)
+
+
+# --------------------------------------------------------------------------- checks
+
+class _Collector(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.ids, self.links, self.h1 = [], [], 0
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if a.get('id'):
+            self.ids.append(a['id'])
+        if tag == 'h1':
+            self.h1 += 1
+        for k in ('href', 'src'):
+            if a.get(k):
+                self.links.append(a[k])
+
+
+def check(out):
+    parsed = {}
+    for p in out.glob('*.html'):
+        c = _Collector()
+        c.feed(p.read_text(encoding='utf-8'))
+        parsed[p.name] = c
+    errors = []
+    for name, c in parsed.items():
+        if c.h1 != 1:
+            errors.append(f'{name}: expected one <h1>, found {c.h1}')
+        dupes = {i for i in c.ids if c.ids.count(i) > 1}
+        if dupes:
+            errors.append(f'{name}: duplicate ids {sorted(dupes)}')
+        for link in c.links:
+            u = urlsplit(link)
+            if u.scheme or link.startswith('//'):
+                continue  # external, mailto:, tel:
+            target = u.path or name
+            if not (out / target).exists():
+                errors.append(f'{name}: broken link "{link}"')
+            elif u.fragment and target.endswith('.html') and u.fragment not in parsed[target].ids:
+                errors.append(f'{name}: missing anchor "{link}"')
+    return errors
+
+
+# --------------------------------------------------------------------------- main
+
+def main():
+    if OUT.exists():
+        shutil.rmtree(OUT)
+    OUT.mkdir()
+    shutil.copytree(ROOT / 'assets', OUT / 'assets')
+
+    build_home()
+    build_services()
+    for s in C.SERVICES:
+        build_detail(s)
+    build_detail(C.LIFE_SCIENCES, is_sector=True)
+    build_sectors()
+    build_about()
+    build_contact()
+    build_legal()
+    build_404()
+
+    for name, html in PAGES.items():
+        (OUT / name).write_text(html, encoding='utf-8')
+
+    robots = 'User-agent: *\n' + ('Allow: /\n' if INDEXABLE else 'Disallow: /\n')
+    if SITE_URL:
+        urls = [f'{SITE_URL}/' if n == 'index.html' else f'{SITE_URL}/{n}' for n in sorted(PAGES) if n != '404.html']
+        (OUT / 'sitemap.xml').write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            + ''.join(f'  <url><loc>{e(u)}</loc></url>\n' for u in urls) + '</urlset>\n', encoding='utf-8')
+        if INDEXABLE:
+            robots += f'Sitemap: {SITE_URL}/sitemap.xml\n'
+    (OUT / 'robots.txt').write_text(robots, encoding='utf-8')
+
+    errors = check(OUT)
+    if errors:
+        print('Build checks failed:', *errors, sep='\n  ', file=sys.stderr)
+        sys.exit(1)
+    print(f'Built {len(PAGES)} pages into {OUT.relative_to(ROOT)}/ '
+          f'({"indexable" if INDEXABLE else "noindex"}{", " + SITE_URL if SITE_URL else ""}). Links OK.')
+
+    if '--serve' in sys.argv:
+        import functools
+        import http.server
+        port = int(os.environ.get('PORT', 8000))
+        handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(OUT))
+        print(f'Serving http://localhost:{port}  (Ctrl+C to stop)')
+        http.server.ThreadingHTTPServer(('', port), handler).serve_forever()
+
+
+if __name__ == '__main__':
+    main()

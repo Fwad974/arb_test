@@ -1,0 +1,60 @@
+# Builds the site with build.py (standard-library Python, no installs) and
+# deploys ./dist to GitHub Pages on every push to main.
+# Pull requests run the build and link checks only.
+#
+# One-time setup: Settings → Pages → Build and deployment → Source: "GitHub Actions".
+# Optional: Settings → Secrets and variables → Actions → Variables →
+#   INDEXABLE = true   once this deploy is the real public site (default: noindex).
+
+name: Build and deploy site
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure Pages
+        id: pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v6
+
+      - name: Build site and check links
+        run: python3 build.py
+        env:
+          # Pages URL, or your custom domain once one is set in Settings → Pages.
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
+          INDEXABLE: ${{ vars.INDEXABLE || 'false' }}
+
+      - name: Upload site
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
