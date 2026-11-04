@@ -6,8 +6,13 @@
  *   node scripts/qa.cjs              checks only
  *   node scripts/qa.cjs --shots      checks + screenshots in ./qa-output
  *
- * Checks: horizontal overflow at 6 widths, JS errors, AA text contrast,
- * mobile menu, anchors clearing the sticky header, contact form behaviour.
+ * Every layout, error and contrast check runs in light AND dark mode, and the
+ * page must look identical with the browser's forced dark mode switched on.
+ * Checks: horizontal overflow at 7 widths (320-2560px), JS errors, AA text
+ * contrast, headline on the first screen, mobile menu, anchors clearing the
+ * sticky header, contact form behaviour, redirects from old addresses, no
+ * cookies, no leftover research notes in the legal text, and for the Arabic
+ * site (/ar/): lang/dir, untranslated text, language switch and the Arabic form.
  */
 const http = require('http');
 const fs = require('fs');
@@ -34,21 +39,47 @@ function serve() {
   if (!fs.existsSync(DIST)) { console.error('dist/ not found. Run `python3 build.py` first.'); process.exit(1); }
   const server = await serve();
   const base = `http://127.0.0.1:${server.address().port}/`;
-  const pages = fs.readdirSync(DIST).filter((f) => f.endsWith('.html'));
+  const redirectStubs = ['home-1', 'blank', 'blank-1', 'blank-2', 'blank-3', 'blank-4', 'blank-5', 'terms-and-coniditions', 'privacy-policy'].map((n) => n + '.html');
+  const pages = fs.readdirSync(DIST).filter((f) => f.endsWith('.html') && !redirectStubs.includes(f))
+    .concat(fs.readdirSync(path.join(DIST, 'ar')).filter((f) => f.endsWith('.html')).map((f) => 'ar/' + f));
   const browser = await chromium.launch();
   const failures = [];
   const fail = (msg) => failures.push(msg);
   if (SHOTS) fs.mkdirSync(OUT, { recursive: true });
 
-  // 1. Layout + errors + contrast across widths
-  for (const width of [320, 375, 768, 1024, 1280, 1440]) {
-    const page = await browser.newPage({ viewport: { width, height: 900 } });
+  // 1. Layout + errors + contrast across widths, in both colour schemes
+  for (const scheme of ['light', 'dark']) for (const width of [320, 375, 768, 1024, 1280, 1440, 2560]) {
+    const page = await browser.newPage({ viewport: { width, height: 900 }, colorScheme: scheme });
     page.on('pageerror', (err) => fail(`JS error @${width}: ${err.message}`));
     page.on('console', (msg) => { if (msg.type() === 'error') fail(`console error @${width}: ${msg.text()}`); });
     for (const name of pages) {
       await page.goto(base + name);
       const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
-      if (scroll > width) fail(`${name} @${width}px: horizontal overflow (${scroll}px)`);
+      if (scroll > width) fail(`${name} @${width}px ${scheme}: horizontal overflow (${scroll}px)`);
+      if (width === 1280) {
+        const text = await page.evaluate(() => document.body.innerText);
+        for (const note of ['Saudi official website', 'SDAIA states', 'The PDPL is the principal']) if (text.includes(note)) fail(`${name}: leftover research note "${note}"`);
+        if (await page.evaluate(() => document.cookie !== '')) fail(`${name}: sets a cookie`);
+        if (name.startsWith('ar/')) {
+          const [lang, dir] = await page.evaluate(() => [document.documentElement.lang, document.documentElement.dir]);
+          if (lang !== 'ar' || dir !== 'rtl') fail(`${name}: expected lang="ar" dir="rtl", got ${lang}/${dir}`);
+          // Latin-only text on an Arabic page should be a name, address, number or brand, marked lang="en" or dir="ltr".
+          const untranslated = await page.evaluate(() => {
+            const out = [];
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+              const text = n.textContent.trim();
+              const el = n.parentElement;
+              if (!text || !/[A-Za-z]{3,}/.test(text) || /[\u0600-\u06FF]/.test(text)) continue;
+              if (el.closest('[lang="en"], [dir="ltr"], script, style, .visually-hidden')) continue;
+              if (/^(©\s*\d{4}\s*)?Elevate Arabia$/.test(text)) continue;
+              out.push(text.slice(0, 40));
+            }
+            return out;
+          });
+          untranslated.forEach((x) => fail(`${name}: untranslated text "${x}"`));
+        }
+      }
       if (width === 375 || width === 1280) {
         const low = await page.evaluate(() => {
           const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number);
@@ -67,20 +98,47 @@ function serve() {
           }
           return bad;
         });
-        low.forEach((b) => fail(`${name} @${width}px: low contrast ${b}`));
+        low.forEach((b) => fail(`${name} @${width}px ${scheme}: low contrast ${b}`));
       }
     }
-    if (SHOTS && (width === 375 || width === 1440)) {
-      for (const name of ['index.html', 'services.html', 'advisory.html', 'about.html', 'contact.html']) {
+    if (SHOTS && scheme === 'light' && (width === 375 || width === 1440)) {
+      for (const name of ['index.html', 'services.html', 'advisory.html', 'about.html', 'contact.html', 'ar/index.html', 'ar/about.html', 'ar/contact.html']) {
         await page.goto(base + name);
-        await page.screenshot({ path: path.join(OUT, `${name.replace('.html', '')}-${width}.png`), fullPage: true });
+        await page.screenshot({ path: path.join(OUT, `${name.replace('.html', '').replace('/', '-')}-${width}.png`), fullPage: true });
       }
     }
     await page.close();
   }
 
+  // 1b. Forced dark mode (Chrome/Samsung "darken websites") must not repaint the page:
+  //     with color-scheme declared, it should render exactly like our own dark theme.
+  const forced = await chromium.launch({ args: ['--blink-settings=forceDarkModeEnabled=true'] });
+  for (const name of ['index.html', 'ar/index.html', 'about.html', 'contact.html']) {
+    const shots = [];
+    for (const b of [browser, forced]) {
+      const p = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
+      await p.goto(base + name);
+      await p.evaluate(async () => { await document.fonts.ready; });
+      shots.push(await p.screenshot({ animations: 'disabled' }));
+      await p.close();
+    }
+    if (!shots[0].equals(shots[1])) fail(`${name}: forced dark mode changes the page (browser is repainting it)`);
+  }
+  await forced.close();
+
+  // 2. Headline, intro and main button on the first screen (laptop) / headline (phone)
+  for (const [w, h, sel, home] of [[1280, 720, '.hero .button', 'index.html'], [1366, 768, '.hero .button', 'index.html'],
+    [375, 667, '.hero h1', 'index.html'], [1280, 720, '.hero .button', 'ar/index.html'], [375, 667, '.hero h1', 'ar/index.html']]) {
+    const p = await browser.newPage({ viewport: { width: w, height: h } });
+    await p.goto(base + home);
+    await p.evaluate(() => document.fonts.ready);
+    const bottom = await p.evaluate((s) => document.querySelector(s).getBoundingClientRect().bottom, sel);
+    if (bottom > h) fail(`${home} @${w}x${h}: "${sel}" below the first screen (${Math.round(bottom)}px)`);
+    await p.close();
+  }
+
   const page = await browser.newPage({ viewport: { width: 375, height: 800 } });
-  // 2. Mobile menu
+  // 3. Mobile menu
   await page.goto(base + 'index.html');
   const toggle = page.locator('.nav-toggle');
   if (await page.locator('#site-nav').isVisible()) fail('mobile nav visible before opening');
@@ -92,15 +150,15 @@ function serve() {
   await toggle.click(); await page.locator('#site-nav a[href="about.html"]').click(); await page.waitForURL(/about/);
   if (await page.locator('#site-nav').isVisible()) fail('mobile nav stayed open after navigation');
 
-  // 3. Anchors clear the sticky header
+  // 4. Anchors clear the sticky header
   await page.setViewportSize({ width: 1280, height: 800 });
-  for (const target of ['advisory.html#finance', 'about.html#partnership', 'sectors.html#education']) {
+  for (const target of ['advisory.html#finance', 'about.html#partnership', 'sectors.html#education', 'ar/advisory.html#finance']) {
     await page.goto(base + target); await page.waitForTimeout(400);
     const [top, header] = await page.evaluate((id) => [document.getElementById(id).getBoundingClientRect().top, document.querySelector('.site-header').getBoundingClientRect().bottom], target.split('#')[1]);
     if (top < header) fail(`${target}: target hidden under sticky header (${Math.round(top)} < ${Math.round(header)})`);
   }
 
-  // 4. Contact form
+  // 5. Contact form
   await page.goto(base + 'contact.html?interest=capital');
   if ((await page.inputValue('#f-interest')) !== 'capital') fail('?interest= did not preselect the service');
   await page.selectOption('#f-interest', '');
@@ -131,12 +189,45 @@ function serve() {
   if (!href || !href.startsWith('mailto:ceo@elevatearabia.com?subject=Website%20enquiry%3A%20Market%20Entry')) fail(`mailto link wrong: ${href}`);
   if (href && decodeURIComponent(href).includes('Company:')) fail('empty optional field leaked into email body');
 
-  // 5. 404 page is served for unknown URLs
+  // 6. Arabic site: language switch both ways, menu labels, Arabic form messages and email
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(base + 'services.html');
+  await page.click('.site-nav .lang-switch');
+  if (!page.url().endsWith('/ar/services.html')) fail(`language switch went to ${page.url()}, expected ar/services.html`);
+  await page.click('.site-nav .lang-switch');
+  if (!page.url().endsWith('/services.html') || page.url().includes('/ar/')) fail(`switch back went to ${page.url()}`);
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto(base + 'ar/index.html');
+  await page.click('.nav-toggle');
+  if (!(await page.locator('#site-nav').isVisible())) fail('Arabic mobile menu did not open');
+  if (!/[\u0600-\u06FF]/.test(await page.getAttribute('.nav-toggle', 'aria-label'))) fail('Arabic menu button label is not Arabic');
+  await page.goto(base + 'ar/contact.html?interest=capital');
+  await page.selectOption('#f-interest', '');
+  await page.click('#enquiry-form button[type=submit]');
+  for (const id of ['f-name', 'f-email', 'f-interest', 'f-message', 'form-status']) {
+    const text = await page.textContent(id === 'form-status' ? '#form-status' : `#${id}-error`);
+    if (!/[\u0600-\u06FF]/.test(text)) fail(`Arabic form: ${id} message is not Arabic ("${text}")`);
+  }
+  await page.fill('#f-name', 'سارة'); await page.fill('#f-email', 'test@example.com');
+  await page.selectOption('#f-interest', 'capital'); await page.fill('#f-message', 'نخطط لجولة تمويل خلال العام القادم.');
+  await page.click('#enquiry-form button[type=submit]');
+  const arHref = await page.getAttribute('#form-status a', 'href');
+  if (!arHref || !decodeURIComponent(arHref).includes('subject=استفسار من الموقع: رأس المال')) fail(`Arabic mailto wrong: ${arHref && decodeURIComponent(arHref).slice(0, 90)}`);
+
+  // 7. Old Wix addresses redirect to the new pages
+  for (const [old, now] of [['home-1.html', 'services.html'], ['blank-3.html', 'advisory.html'], ['terms-and-coniditions.html', 'terms.html']]) {
+    await page.goto(base + old);
+    await page.waitForURL((u) => u.pathname.endsWith(now), { timeout: 5000 }).catch(() => fail(`${old} did not redirect to ${now}`));
+  }
+  const cookies = await page.context().cookies();
+  if (cookies.length) fail(`cookies set: ${cookies.map((c) => c.name).join(', ')}`);
+
+  // 8. 404 page is served for unknown URLs
   const res = await page.goto(base + 'nope/deeper.html');
   if (res.status() !== 404 || !(await page.textContent('h1')).includes('not found')) fail('404 page not served');
 
   await browser.close();
   server.close();
   if (failures.length) { console.error(`QA FAILED (${failures.length})\n  ` + failures.join('\n  ')); process.exit(1); }
-  console.log(`QA passed: ${pages.length} pages x 6 widths, contrast, menu, anchors, form, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
+  console.log(`QA passed: ${pages.length} pages (English + Arabic) x 7 widths x light/dark, contrast, forced dark, first screen, menu, anchors, forms, language switch, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
 })();
