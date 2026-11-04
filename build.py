@@ -68,6 +68,49 @@ def num(i):
     return f'{i:02d}'
 
 
+def image_size(rel):
+    """Pixel size of a WebP or PNG under assets/images, for width/height attributes."""
+    b = (ROOT / 'assets' / 'images' / rel).read_bytes()[:32]
+    if b[:8] == b'\x89PNG\r\n\x1a\n':
+        return int.from_bytes(b[16:20], 'big'), int.from_bytes(b[20:24], 'big')
+    kind = b[12:16]
+    if kind == b'VP8X':
+        return 1 + int.from_bytes(b[24:27], 'little'), 1 + int.from_bytes(b[27:30], 'little')
+    if kind == b'VP8L':
+        bits = int.from_bytes(b[21:25], 'little')
+        return (bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1
+    if kind == b'VP8 ':
+        return int.from_bytes(b[26:28], 'little') & 0x3FFF, int.from_bytes(b[28:30], 'little') & 0x3FFF
+    raise ValueError(f'unsupported image {rel}')
+
+
+def img(rel, alt, height=None, cls='', lazy=True):
+    w, h = image_size(rel)
+    if height:
+        w, h = round(w * height / h), height
+    attrs = f' class="{cls}"' if cls else ''
+    attrs += ' loading="lazy" decoding="async"' if lazy else ''
+    return f'<img src="assets/images/{rel}" alt="{e(alt)}" width="{w}" height="{h}"{attrs}>'
+
+
+def logos(items, area=4200, max_w=150, cls=''):
+    """Logo row. Sizes are balanced by area so tall and wide marks carry similar weight."""
+    out = []
+    for slug, name in items:
+        w, h = image_size(f'clients/{slug}.webp')
+        ratio = w / h
+        dh = max(26, min(60, round((area / ratio) ** 0.5)))
+        dw = round(dh * ratio)
+        if dw > max_w:
+            dw, dh = max_w, round(max_w / ratio)
+        out.append(f'<li><img src="assets/images/clients/{slug}.webp" alt="{e(name)}" width="{dw}" height="{dh}" '
+                   f'loading="lazy" decoding="async"></li>')
+    return f'<ul class="logos {cls}">' + ''.join(out) + '</ul>'
+
+
+BRAND = 'brand/elevate-wordmark.webp'
+
+
 def section(eyebrow, heading, body, intro='', id=None, footer=''):
     """Two-column editorial section: heading on the left, content on the right."""
     id_attr = f' id="{id}"' if id else ''
@@ -85,6 +128,23 @@ def section(eyebrow, heading, body, intro='', id=None, footer=''):
       {body}
       {footer_html}
     </div>
+  </div>
+</section>'''
+
+
+def section_wide(eyebrow, heading, body, intro='', id=None):
+    """Full-width section: heading block above, content across the whole width."""
+    id_attr = f' id="{id}"' if id else ''
+    intro_html = f'<p class="section-intro">{e(intro)}</p>' if intro else ''
+    return f'''
+<section class="section"{id_attr}>
+  <div class="wrap">
+    <div class="wide__head">
+      <p class="eyebrow">{e(eyebrow)}</p>
+      <h2>{hl(heading)}</h2>
+      {intro_html}
+    </div>
+    {body}
   </div>
 </section>'''
 
@@ -207,12 +267,20 @@ def layout(slug, title, description, body):
     if SITE_URL:
         url = f'{SITE_URL}/' if slug == 'index' else f'{SITE_URL}/{filename}'
         head_extra += [f'<link rel="canonical" href="{e(url)}">', f'<meta property="og:url" content="{e(url)}">']
+    if SITE_URL:
+        head_extra += [f'<meta property="og:image" content="{e(SITE_URL)}/assets/images/og-image.png">',
+                       '<meta property="og:image:width" content="1200">', '<meta property="og:image:height" content="630">',
+                       '<meta name="twitter:card" content="summary_large_image">']
     if not INDEXABLE or slug == '404':
         head_extra.append('<meta name="robots" content="noindex">')
 
     service_links = ''.join(f'<li><a href="{s["slug"]}.html">{e(s["label"])}</a></li>' for s in C.SERVICES)
     emails = ''.join(f'<li><a href="mailto:{m}">{m}</a></li>' for m in C.SITE['emails'])
     phones = ''.join(f'<li><a href="tel:{t}">{e(p)}</a></li>' for p, t in C.SITE['phones'])
+    social = ''
+    if C.SITE['social']:
+        social = ('<div><h2 class="footer-title">Follow</h2><ul>' + ''.join(
+            f'<li>{link_arrow(u, n, external=True)}</li>' for n, u in C.SITE['social']) + '</ul></div>')
 
     return f'''<!doctype html>
 <html lang="en">
@@ -228,6 +296,7 @@ def layout(slug, title, description, body):
 <meta property="og:description" content="{e(description)}">
 {chr(10).join(head_extra)}
 <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
 <link rel="stylesheet" href="assets/css/styles.css">
 <script>document.documentElement.classList.add('js')</script>
 <script src="assets/js/app.js" defer></script>
@@ -236,7 +305,7 @@ def layout(slug, title, description, body):
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="wrap site-header__inner">
-    <a class="brand" href="index.html"><span class="brand__mark" aria-hidden="true"></span>Elevate Arabia</a>
+    <a class="brand" href="index.html">{img(BRAND, 'Elevate Arabia home', height=26, lazy=False)}</a>
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">{icon("menu", "icon icon--menu")}{icon("close", "icon icon--close")}</button>
     <nav class="site-nav" id="site-nav" aria-label="Main">
       {nav}
@@ -251,7 +320,7 @@ def layout(slug, title, description, body):
   <div class="wrap">
     <div class="footer-grid">
       <div>
-        <a class="brand" href="index.html"><span class="brand__mark" aria-hidden="true"></span>Elevate Arabia</a>
+        <a class="brand" href="index.html">{img(BRAND, 'Elevate Arabia home', height=28)}</a>
         <p class="footer-tagline">{e(C.SITE["tagline"])}</p>
       </div>
       <div>
@@ -266,7 +335,9 @@ def layout(slug, title, description, body):
         <h2 class="footer-title">Contact</h2>
         <ul>{emails}{phones}</ul>
         <p class="footer-address">{"<br>".join(e(x) for x in C.SITE["address"])}</p>
+        <p class="footer-map">{link_arrow(C.SITE["maps"], "Open in Google Maps", external=True)}</p>
       </div>
+      {social}
     </div>
     <div class="footer-bottom">
       <span>© {YEAR} {e(C.SITE["name"])}</span>
@@ -298,7 +369,7 @@ def build_home():
         'operations in Saudi Arabia through integrated advisory, capital readiness, venture support and '
         'market-entry execution.',
         actions=button('contact.html', 'Discuss a project') + link_arrow('services.html', 'Explore services'),
-        extra=stats)
+        extra=stats + logos(C.CLIENTS_GLOBAL, area=2600, max_w=120, cls='logos--strip'))
 
     services = section(
         'Services', 'Built around the challenges [you need to solve.]',
@@ -327,6 +398,10 @@ def build_home():
         </div>''',
         footer=link_arrow('about.html', 'About Elevate Arabia'))
 
+    network = section_wide(
+        'Clients', 'Network & [partners.]', logos(C.CLIENTS_NETWORK, cls='logos--grid'),
+        intro='Clients and partners across life sciences, technology, sustainability and finance.', id='clients')
+
     sectors = section(
         'Sectors', 'Sector familiarity. [Business discipline.]',
         rows([dict(num=num(i + 1), title=s['label'], desc=s['desc'], href=f'sectors.html#{s["slug"]}')
@@ -335,7 +410,7 @@ def build_home():
               'and Saudi growth sectors.',
         footer=link_arrow('sectors.html', 'All sectors'))
 
-    body = hero + services + approach + who + sectors + cta(
+    body = hero + services + approach + who + network + sectors + cta(
         'Let’s build what comes next.',
         'Talk to the team about your business, investment or Saudi market opportunity.', 'Discuss a project')
     page('index', 'Strategy, capital and Saudi market entry',
@@ -454,15 +529,25 @@ def build_about():
         'International partnership', 'A shared focus on [improvement.]',
         '<p class="body-lg">Japan-based Hirayama Holdings is our strategic international partner, with a focus on '
         'Gemba Kaizen, manufacturing performance and continuous improvement.</p>'
+        f'<figure class="photo">{img(C.PARTNER["photo"], C.PARTNER["photo_alt"])}'
+        f'<figcaption>{e(C.PARTNER["photo_alt"])}.</figcaption></figure>'
         '<div class="panel"><p class="eyebrow">International partner</p>'
-        '<p class="panel__title">Hirayama Holdings Co., Ltd.</p>'
-        '<p>Japan. Manufacturing capability, continuous improvement and industrial consulting.</p></div>',
+        f'<p class="panel__title">{e(C.PARTNER["name"])}</p>'
+        '<p>Tokyo, Japan. Manufacturing capability, continuous improvement and industrial consulting.</p>'
+        f'{link_arrow(C.PARTNER["url"], "Visit Hirayama Holdings", external=True)}</div>',
         id='partnership')
+
+    def avatar(name, photo):
+        if photo:
+            return img(f'team/{photo}.webp', '', height=56, cls='avatar')
+        initials = ''.join(w[0] for w in name.split()[:2])
+        return f'<span class="avatar avatar--initials" aria-hidden="true">{e(initials)}</span>'
 
     def people(arr):
         return '<ul class="people">' + ''.join(
-            f'<li><span class="people__name">{e(n)}</span><span class="people__role">{e(r)}</span></li>'
-            for n, r in arr) + '</ul>'
+            f'<li>{avatar(n, ph)}<span><span class="people__name">{e(n)}</span>'
+            f'<span class="people__role">{e(r)}</span></span></li>'
+            for n, r, ph in arr) + '</ul>'
 
     team = section(
         'Team', 'Experience behind [the work.]',
@@ -519,7 +604,10 @@ def build_contact():
     details = '<dl class="contact-list">' + ''.join(
         f'<div><dt>Email</dt><dd><a href="mailto:{m}">{m}</a></dd></div>' for m in C.SITE['emails']) + ''.join(
         f'<div><dt>Phone</dt><dd><a href="tel:{t}">{e(p)}</a></dd></div>' for p, t in C.SITE['phones']) + (
-        f'<div><dt>Office</dt><dd>{", ".join(e(x) for x in C.SITE["address"])}</dd></div></dl>')
+        f'<div><dt>Office</dt><dd>{", ".join(e(x) for x in C.SITE["address"])}'
+        f'<span class="dd-link">{link_arrow(C.SITE["maps"], "Open in Google Maps", external=True)}</span></dd></div>') + (
+        f'<div><dt>Social</dt><dd class="dd-links">' + ''.join(link_arrow(u, n, external=True) for n, u in C.SITE['social'])
+        + '</dd></div>' if C.SITE['social'] else '') + '</dl>'
 
     body = hero + f'''
 <section class="section">
