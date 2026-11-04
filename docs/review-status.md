@@ -7,7 +7,7 @@ against this repository's build.
 `scripts/qa.cjs`. **Needs input** means the code is ready but a fact, file or decision has to
 come from Elevate Arabia. **Not done** means still open.
 
-**Summary:** 27 fixed · 8 fixed but needing input or sign-off · 1 not done (Arabic version).
+**Summary:** 27 fixed · 9 fixed but needing input or sign-off · 0 not done.
 
 | # | Finding | Status | In this version |
 |---|---|---|---|
@@ -21,12 +21,12 @@ come from Elevate Arabia. **Not done** means still open.
 | 8 | Logo animation | Fixed | No animation. The logo appears once, in the header. |
 | 9 | Hamburger menu on desktop | Fixed | A horizontal menu on desktop. The hamburger is used only below 760px and includes Contact. |
 | 10 | Chaotic colours, too much red, two reds | Fixed | White and sand content, navy only for the footer and one call-to-action panel, charcoal text, and a single red `#C00000` for buttons, numbers and small markers, never a background. |
-| 11 | Inconsistent font sizes and families | Fixed | One family, IBM Plex Sans (self-hosted, three weights), with one type scale on every page. Layout tested from 320 to 2560px *(QA)*. |
+| 11 | Inconsistent font sizes and families | Fixed | One family, IBM Plex Sans (self-hosted, three weights) with IBM Plex Sans Arabic for Arabic, and one type scale on every page. Layout tested from 320 to 2560px in both languages *(QA)*. |
 | 12 | "Our Services" hard to read | Fixed | Dark text on white with 19px titles and descriptions, small red numbers and compact rows. Each row is a full-width link, so it works on touch screens. The review suggests cards; compact rows were chosen to keep all 8 services scannable. |
 | 13 | Messy logo presentation | Fixed · needs input | Logos are grey, the same maximum height, in equal boxes, with the last row centred so there is no empty slot. Elevate Financial Express was removed from the client grid, and the grey box behind "saudi**ai**" was removed. Nothing is cut off. On phones they show 3 per row in about 100px boxes. OMIXCUBE is still an illustration, so ask for a flat logo. |
 | 14 | Labels that repeat or don't match | Fixed | Each label describes its own section, with no section numbers and no repeats. The same 8-service list appears on Home, Services and in the footer. |
 | 15 | Stock and AI images | Fixed | None. The only photos are real: the Elevate and Hirayama team photo, shown full width on About, and team headshots. |
-| 16 | No Arabic version | **Not done** | English only. IBM Plex Sans has a matching IBM Plex Sans Arabic, and `content.py` keeps all copy in one place, which makes a translated, right-to-left version straightforward. The translation needs a native-speaker review. |
+| 16 | No Arabic version | Fixed · needs sign-off | A full Arabic site at `/ar/` (14 pages), right-to-left, in IBM Plex Sans Arabic, with a language switch on every page and hreflang tags for search engines. The form messages and the prepared email are in Arabic too. Translations live in `content_ar.py`, and the build fails if one is missing *(QA checks lang/dir, untranslated text, the switch and the Arabic form)*. A native speaker should review the translation; people's names stay in Latin script, as on the live site. |
 | 17 | Header overlaps the content | Fixed | A solid sticky header that never hides. Anchors and sticky headings are offset below it *(QA)*. |
 | 18 | Scroll animations hide content | Fixed | No scroll animations. All content is visible on load. |
 | 19 | Headline below the first screen | Fixed | Headline, intro and button are visible at 1280×720 and 1366×768, and the headline at 375×667 *(QA)*. |
@@ -52,7 +52,7 @@ come from Elevate Arabia. **Not done** means still open.
 
 The review recommends a CMS where content is entered once, in English and Arabic. Here,
 every service, team member, logo, stat, contact detail and legal text lives once in
-`content.py` and appears everywhere automatically. This already fixes the drift the review
+`content.py` (English) and `content_ar.py` (Arabic) and appears everywhere automatically. This already fixes the drift the review
 describes, such as three service lists that disagreed. Editing still means changing a file in
 Git, though. If non-technical staff need a web editor, a Git-based CMS such as Decap CMS can
 sit on top of the same content without changing the hosting.
@@ -65,4 +65,4 @@ sit on top of the same content without changing the hosting.
 4. Which general inbox should replace `ceo@` and `os@` (#26)?
 5. Who will do the lawyer's review of the Terms and Privacy text (#4, #28)?
 6. Is the navy version of the wordmark for light backgrounds approved?
-7. Should we go ahead with the Arabic version, and who will review the translation (#16)?
+7. Who will review the Arabic translation (#16)? Please also confirm the Arabic spelling of the office address ("سلطان سنتر"), whether names should appear in Arabic script, and which language version of the legal text prevails.

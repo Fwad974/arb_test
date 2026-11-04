@@ -6,8 +6,24 @@ script and deployed to GitHub Pages by GitHub Actions. There are no frameworks, 
 third-party requests (the font is self-hosted), nothing to install, and every page works
 without JavaScript.
 
+- English at `/`, Arabic at `/ar/`.
 - What was wrong with the original prototype, and what changed: [`docs/REVIEW.md`](docs/REVIEW.md).
 - Status of each finding in the Flopexa website review (28 October 2026): [`docs/review-status.md`](docs/review-status.md).
+
+## Languages
+
+The English site is at `/` and the Arabic site at `/ar/`. Both come from the same templates,
+and every page has a language switch and `hreflang` tags.
+
+- English copy, including the interface text in `UI`, is in `content.py`.
+- Arabic copy is in `content_ar.py`. It takes the structure (slugs, links, photos, phone
+  numbers) from `content.py` and supplies only the text, matched by slug or name.
+- If you add a service, sector, team member or `UI` string in English, add its Arabic text
+  too. The build stops with an error that names whatever is missing.
+- Arabic pages are right-to-left (`dir="rtl"`) and use IBM Plex Sans Arabic. Layout CSS uses
+  logical properties, so it mirrors automatically, and arrows flip in Arabic.
+
+The Arabic translation needs a native-speaker review before launch.
 
 ## Run it locally
 
@@ -23,7 +39,8 @@ Open http://localhost:8000. Rebuild after each edit with `python3 build.py`.
 
 | What | Where |
 |---|---|
-| Copy: services, sectors, team, contact details, social links, client logos, legal text | `content.py` |
+| English copy: services, sectors, team, contact details, social links, client logos, legal text, interface text | `content.py` |
+| Arabic copy (same structure, text only) | `content_ar.py` |
 | Logos, team photos, brand files | `assets/images/` (WebP; drop in a file and reference its slug) |
 | Page templates and layout | `build.py` |
 | Styles and design tokens | `assets/css/styles.css` |
@@ -71,10 +88,11 @@ For real 301s, put a CDN such as Cloudflare in front of Pages and add the same r
 ## Browser QA (optional)
 
 Checks every page at 7 widths (320–2560px) for overflow, JS errors and WCAG AA text contrast.
-It also checks that the headline and main button are on the first screen of a 1280×720 laptop,
+It covers both languages, and also checks that the headline and main button are on the first screen of a 1280×720 laptop,
 and tests the mobile menu, anchor offsets under the sticky header, contact form validation, the
 mailto output, the old-address redirects, that no cookies are set, that no research notes
-remain in the legal text, and the 404 page.
+remain in the legal text, and the 404 page. On the Arabic site it also checks `lang`/`dir`,
+untranslated text, the language switch and the Arabic form messages and email.
 
 ```bash
 npm install --no-save playwright && npx playwright install chromium
@@ -101,8 +119,9 @@ panel per page, and one red as an accent only.
 | `--accent` | `#c00000` | The one red: buttons, numbering, small markers. Never a background. |
 | `--line` | `#e6e2da` | Hairline dividers |
 
-- **Type:** IBM Plex Sans (400/500/600, self-hosted in `assets/fonts/`, SIL Open Font License),
-  with one type scale on every page. IBM Plex Sans Arabic is the matching family for an Arabic version.
+- **Type:** IBM Plex Sans and IBM Plex Sans Arabic (400/500/600, self-hosted in `assets/fonts/`,
+  SIL Open Font License), with one type scale on every page. The Arabic font loads only on pages
+  that contain Arabic text.
 - **Logo:** the original beige wordmark on the navy footer, and a navy variant
   (`elevate-wordmark-dark.webp`) on the white header, because beige on white is only 2.4:1.
   Confirm the navy variant with the brand owner.

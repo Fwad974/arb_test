@@ -4,9 +4,12 @@
     python3 build.py           build into ./dist and check every internal link
     python3 build.py --serve   build, then serve ./dist at http://localhost:8000
 
+Builds the English site at / and the Arabic site at /ar/ from the same templates.
+Copy lives in content.py (English) and content_ar.py (Arabic).
+
 Environment (optional, set in .github/workflows/pages.yml for deploys):
     SITE_URL    absolute site URL, e.g. https://www.elevatearabia.com
-                adds canonical/og:url tags and a sitemap.xml
+                adds canonical, hreflang and og:url tags and a sitemap.xml
     INDEXABLE   "true" to allow search engines. Default is noindex so a
                 preview deploy never competes with the live site in search.
 """
@@ -21,13 +24,39 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
 
-import content as C
+import content as EN
+import content_ar as AR
 
+LANGS = [EN, AR]
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / 'dist'
 SITE_URL = os.environ.get('SITE_URL', '').strip().rstrip('/')
 INDEXABLE = os.environ.get('INDEXABLE', '').strip().lower() in ('1', 'true', 'yes')
 YEAR = date.today().year
+
+# The language being built. set_language() switches these.
+C = EN          # content module for this language
+PREFIX = ''     # path from a page to the site root: '' for /, '../' for /ar/
+AREAS = []
+SERVICE_SLUGS = set()
+
+
+def set_language(mod):
+    global C, PREFIX, AREAS, SERVICE_SLUGS
+    C = mod
+    PREFIX = '../' * mod.LANG['path'].count('/')
+    AREAS = service_areas()
+    SERVICE_SLUGS = {s['slug'] for s in C.SERVICES}
+
+
+def t(key, **values):
+    """Interface text in the current language. {placeholders} are filled only when values are given."""
+    text = C.UI[key]
+    return text.format(**values) if values else text
+
+
+def other_language():
+    return AR if C is EN else EN
 
 
 # --------------------------------------------------------------------------- helpers
@@ -41,6 +70,10 @@ def hl(text):
     return re.sub(r'\[(.+?)\]', r'<span class="tone">\1</span>', e(text))
 
 
+def asset(path):
+    return f'{PREFIX}assets/{path}'
+
+
 ICONS = {
     'arrow': '<path d="M5 12h14M13 6l6 6-6 6"/>',
     'external': '<path d="M7 17 17 7M9 7h8v8"/>',
@@ -50,19 +83,26 @@ ICONS = {
 
 
 def icon(name, cls='icon'):
-    return (f'<svg class="{cls}" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    return (f'<svg class="{cls} icon--{name}" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
             f'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">{ICONS[name]}</svg>')
 
 
 def link_arrow(href, label, external=False):
     attrs = ' target="_blank" rel="noopener"' if external else ''
-    sr = '<span class="visually-hidden"> (opens in a new tab)</span>' if external else ''
+    sr = f'<span class="visually-hidden">{e(t("new_tab"))}</span>' if external else ''
     return f'<a class="link-arrow" href="{e(href)}"{attrs}>{e(label)}{sr}{icon("external" if external else "arrow")}</a>'
 
 
-def button(href, label, variant=''):
-    cls = 'button' + (f' button--{variant}' if variant else '')
-    return f'<a class="{cls}" href="{e(href)}">{e(label)}</a>'
+def button(href, label):
+    return f'<a class="button" href="{e(href)}">{e(label)}</a>'
+
+
+def mailto(address):
+    return f'<a href="mailto:{e(address)}" dir="ltr">{e(address)}</a>'
+
+
+def tel(label, number):
+    return f'<a href="tel:{e(number)}" dir="ltr">{e(label)}</a>'
 
 
 def num(i):
@@ -91,11 +131,11 @@ def img(rel, alt, height=None, cls='', lazy=True):
         w, h = round(w * height / h), height
     attrs = f' class="{cls}"' if cls else ''
     attrs += ' loading="lazy" decoding="async"' if lazy else ''
-    return f'<img src="assets/images/{rel}" alt="{e(alt)}" width="{w}" height="{h}"{attrs}>'
+    return f'<img src="{asset("images/" + rel)}" alt="{e(alt)}" width="{w}" height="{h}"{attrs}>'
 
 
 def logos(items, area=4200, max_w=150, cls=''):
-    """Logo row. Sizes are balanced by area so tall and wide marks carry similar weight."""
+    """Logo grid. width/height give each logo's proportions; CSS sets the shared height."""
     out = []
     for slug, name in items:
         w, h = image_size(f'clients/{slug}.webp')
@@ -104,7 +144,7 @@ def logos(items, area=4200, max_w=150, cls=''):
         dw = round(dh * ratio)
         if dw > max_w:
             dw, dh = max_w, round(max_w / ratio)
-        out.append(f'<li><img src="assets/images/clients/{slug}.webp" alt="{e(name)}" width="{dw}" height="{dh}" '
+        out.append(f'<li><img src="{asset(f"images/clients/{slug}.webp")}" alt="{e(name)}" width="{dw}" height="{dh}" '
                    f'loading="lazy" decoding="async"></li>')
     return f'<ul class="logos {cls}">' + ''.join(out) + '</ul>'
 
@@ -122,7 +162,7 @@ REDIRECTS = {
 
 
 def section(eyebrow, heading, body, intro='', id=None, footer=''):
-    """Two-column editorial section: heading on the left, content on the right."""
+    """Two-column editorial section: heading on the start side, content on the end side."""
     id_attr = f' id="{id}"' if id else ''
     intro_html = f'<p class="section-intro">{e(intro)}</p>' if intro else ''
     footer_html = f'<div class="section-foot">{footer}</div>' if footer else ''
@@ -162,9 +202,9 @@ def section_wide(eyebrow, heading, body, intro='', id=None):
 def page_hero(eyebrow, title, lead, actions='', crumbs=None, extra=''):
     crumbs_html = ''
     if crumbs:
-        items = ''.join(f'<li><a href="{e(h)}">{e(t)}</a></li>' for t, h in crumbs[:-1])
+        items = ''.join(f'<li><a href="{e(h)}">{e(x)}</a></li>' for x, h in crumbs[:-1])
         items += f'<li><span aria-current="page">{e(crumbs[-1][0])}</span></li>'
-        crumbs_html = f'<nav class="breadcrumb" aria-label="Breadcrumb"><ol>{items}</ol></nav>'
+        crumbs_html = f'<nav class="breadcrumb" aria-label="{e(t("breadcrumb_label"))}"><ol>{items}</ol></nav>'
     actions_html = f'<div class="actions">{actions}</div>' if actions else ''
     return f'''
 <section class="hero">
@@ -238,15 +278,7 @@ def service_areas():
     return areas
 
 
-AREAS = service_areas()
-SERVICE_SLUGS = {s['slug'] for s in C.SERVICES}
-
-
 # --------------------------------------------------------------------------- layout
-
-NAV = [('Services', 'services.html', 'services'), ('Sectors', 'sectors.html', 'sectors'),
-       ('About', 'about.html', 'about')]
-
 
 def section_of(slug):
     if slug in SERVICE_SLUGS or slug == 'services':
@@ -256,46 +288,66 @@ def section_of(slug):
     return slug
 
 
+def page_url(mod, filename):
+    """Absolute URL of a page in a given language (requires SITE_URL)."""
+    path = mod.LANG['path'] + ('' if filename == 'index.html' else filename)
+    return f'{SITE_URL}/{path}'
+
+
 def layout(slug, title, description, body):
+    lang = C.LANG
     current = section_of(slug)
     filename = 'index.html' if slug == 'index' else f'{slug}.html'
     full_title = f'{C.SITE["name"]}: {title}' if slug == 'index' else f'{title} | {C.SITE["name"]}'
+    other = other_language()
+    has_twin = slug != '404'
+    twin = filename if has_twin else 'index.html'
+    switch_href = (f'{other.LANG["path"]}{twin}' if C is EN else f'{PREFIX}{twin}')
 
     def nav_link(label, href, key):
         cur = ' aria-current="page"' if key == current else ''
-        return f'<a href="{href}"{cur}>{label}</a>'
+        return f'<a href="{href}"{cur}>{e(label)}</a>'
 
-    nav = ''.join(nav_link(*n) for n in NAV)
+    nav = ''.join(nav_link(t(k), h, key) for k, h, key in [
+        ('nav_services', 'services.html', 'services'), ('nav_sectors', 'sectors.html', 'sectors'),
+        ('nav_about', 'about.html', 'about')])
     contact_cur = ' aria-current="page"' if current == 'contact' else ''
+    lang_switch = (f'<a class="lang-switch" href="{switch_href}" hreflang="{other.LANG["code"]}" lang="{other.LANG["code"]}" '
+                   f'title="{e(other.UI["lang_switch_label"])}">{e(other.LANG["name"])}</a>')
 
-    head_extra = []
+    head_extra = [f'<meta property="og:locale" content="{lang["locale"]}">']
     base = ''
     if slug == '404' and SITE_URL:
         # GitHub Pages serves 404.html at any missing path, including nested ones,
         # so pin relative URLs to the site root.
         base = f'<base href="{e(SITE_URL)}/">\n'
     if SITE_URL:
-        url = f'{SITE_URL}/' if slug == 'index' else f'{SITE_URL}/{filename}'
-        head_extra += [f'<link rel="canonical" href="{e(url)}">', f'<meta property="og:url" content="{e(url)}">']
-    if SITE_URL:
-        head_extra += [f'<meta property="og:image" content="{e(SITE_URL)}/assets/images/og-image.png">',
+        url = page_url(C, filename)
+        head_extra += [f'<link rel="canonical" href="{e(url)}">', f'<meta property="og:url" content="{e(url)}">',
+                       f'<meta property="og:image" content="{e(SITE_URL)}/assets/images/og-image.png">',
                        '<meta property="og:image:width" content="1200">', '<meta property="og:image:height" content="630">',
                        '<meta name="twitter:card" content="summary_large_image">']
+        if has_twin:
+            head_extra += [f'<link rel="alternate" hreflang="{m.LANG["code"]}" href="{e(page_url(m, filename))}">' for m in LANGS]
+            head_extra.append(f'<link rel="alternate" hreflang="x-default" href="{e(page_url(EN, filename))}">')
     if not INDEXABLE or slug == '404':
         head_extra.append('<meta name="robots" content="noindex">')
-    if slug == 'index':
+    if slug == 'index' and C is EN:
         head_extra.append(organization_jsonld())
+    font = 'ibm-plex-sans-arabic-arabic' if lang['code'] == 'ar' else 'ibm-plex-sans-latin'
+    preloads = ''.join(f'<link rel="preload" href="{asset(f"fonts/{font}-{w}.woff2")}" as="font" type="font/woff2" crossorigin>\n'
+                       for w in (400, 600))
 
     service_links = ''.join(f'<li><a href="{a["href"]}">{e(a["label"])}</a></li>' for a in AREAS)
-    emails = ''.join(f'<li><a href="mailto:{m}">{m}</a></li>' for m in C.SITE['emails'])
-    phones = ''.join(f'<li><a href="tel:{t}">{e(p)}</a></li>' for p, t in C.SITE['phones'])
+    emails = ''.join(f'<li>{mailto(m)}</li>' for m in C.SITE['emails'])
+    phones = ''.join(f'<li>{tel(p, n)}</li>' for p, n in C.SITE['phones'])
     social = ''
     if C.SITE['social']:
-        social = ('<div><h2 class="footer-title">Follow</h2><ul>' + ''.join(
+        social = (f'<div><h2 class="footer-title">{e(t("footer_follow"))}</h2><ul>' + ''.join(
             f'<li>{link_arrow(u, n, external=True)}</li>' for n, u in C.SITE['social']) + '</ul></div>')
 
     return f'''<!doctype html>
-<html lang="en">
+<html lang="{lang["code"]}" dir="{lang["dir"]}">
 <head>
 <meta charset="utf-8">
 {base}<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -307,23 +359,22 @@ def layout(slug, title, description, body):
 <meta property="og:title" content="{e(full_title)}">
 <meta property="og:description" content="{e(description)}">
 {chr(10).join(head_extra)}
-<link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
-<link rel="preload" href="assets/fonts/ibm-plex-sans-latin-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="assets/fonts/ibm-plex-sans-latin-600.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/css/styles.css">
+<link rel="icon" href="{asset("images/favicon.svg")}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{asset("images/apple-touch-icon.png")}">
+{preloads}<link rel="stylesheet" href="{asset("css/styles.css")}">
 <script>document.documentElement.classList.add('js')</script>
-<script src="assets/js/app.js" defer></script>
+<script src="{asset("js/app.js")}" defer></script>
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to content</a>
+<a class="skip-link" href="#main">{e(t("skip"))}</a>
 <header class="site-header">
   <div class="wrap site-header__inner">
-    <a class="brand" href="index.html">{img(BRAND_DARK, 'Elevate Arabia home', height=26, lazy=False)}</a>
-    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">{icon("menu", "icon icon--menu")}{icon("close", "icon icon--close")}</button>
-    <nav class="site-nav" id="site-nav" aria-label="Main">
+    <a class="brand" href="index.html">{img(BRAND_DARK, t("home_alt"), height=26, lazy=False)}</a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="{e(t("menu_open"))}" data-label-open="{e(t("menu_open"))}" data-label-close="{e(t("menu_close"))}">{icon("menu", "icon")}{icon("close", "icon")}</button>
+    <nav class="site-nav" id="site-nav" aria-label="{e(t("nav_label"))}">
       {nav}
-      <a class="button button--sm" href="contact.html"{contact_cur}>Contact</a>
+      {lang_switch}
+      <a class="button button--sm" href="contact.html"{contact_cur}>{e(t("nav_contact"))}</a>
     </nav>
   </div>
 </header>
@@ -334,28 +385,28 @@ def layout(slug, title, description, body):
   <div class="wrap">
     <div class="footer-grid">
       <div>
-        <a class="brand" href="index.html">{img(BRAND, 'Elevate Arabia home', height=28)}</a>
+        <a class="brand" href="index.html">{img(BRAND, t("home_alt"), height=28)}</a>
         <p class="footer-tagline">{e(C.SITE["tagline"])}</p>
       </div>
       <div>
-        <h2 class="footer-title">Services</h2>
+        <h2 class="footer-title">{e(t("footer_services"))}</h2>
         <ul>{service_links}</ul>
       </div>
       <div>
-        <h2 class="footer-title">Company</h2>
-        <ul><li><a href="about.html">About</a></li><li><a href="sectors.html">Sectors</a></li><li><a href="contact.html">Contact</a></li></ul>
+        <h2 class="footer-title">{e(t("footer_company"))}</h2>
+        <ul><li><a href="about.html">{e(t("nav_about"))}</a></li><li><a href="sectors.html">{e(t("nav_sectors"))}</a></li><li><a href="contact.html">{e(t("nav_contact"))}</a></li></ul>
       </div>
       <div>
-        <h2 class="footer-title">Contact</h2>
+        <h2 class="footer-title">{e(t("footer_contact"))}</h2>
         <ul>{emails}{phones}</ul>
         <p class="footer-address">{"<br>".join(e(x) for x in C.SITE["address"])}</p>
-        <p class="footer-map">{link_arrow(C.SITE["maps"], "Open in Google Maps", external=True)}</p>
+        <p class="footer-map">{link_arrow(C.SITE["maps"], t("maps"), external=True)}</p>
       </div>
       {social}
     </div>
     <div class="footer-bottom">
       <span>© {YEAR} {e(C.SITE["name"])}</span>
-      <span><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms &amp; Conditions</a></span>
+      <span><a href="privacy.html">{e(t("privacy"))}</a><a href="terms.html">{e(t("terms"))}</a>{lang_switch}</span>
     </div>
   </div>
 </footer>
@@ -366,19 +417,19 @@ def layout(slug, title, description, body):
 
 def organization_jsonld():
     """Company details for search engines (name, address, phones, email, logo)."""
-    street, city = ', '.join(C.SITE['address'][:2]), C.SITE['address'][2].split(',')[0]
+    street, city = ', '.join(EN.SITE['address'][:2]), EN.SITE['address'][2].split(',')[0]
     data = {
-        '@context': 'https://schema.org', '@type': 'ProfessionalService', 'name': C.SITE['name'],
-        'description': C.SITE['tagline'], 'email': C.SITE['enquiry_email'],
-        'telephone': [t for _, t in C.SITE['phones']],
+        '@context': 'https://schema.org', '@type': 'ProfessionalService', 'name': EN.SITE['name'],
+        'description': EN.SITE['tagline'], 'email': EN.SITE['enquiry_email'],
+        'telephone': [n for _, n in EN.SITE['phones']],
         'address': {'@type': 'PostalAddress', 'streetAddress': street, 'addressLocality': city, 'addressCountry': 'SA'},
-        'areaServed': 'Saudi Arabia',
+        'areaServed': 'Saudi Arabia', 'availableLanguage': ['en', 'ar'],
     }
     if SITE_URL:
         data.update(url=f'{SITE_URL}/', logo=f'{SITE_URL}/assets/images/apple-touch-icon.png',
                     image=f'{SITE_URL}/assets/images/og-image.png')
-    if C.SITE['social']:
-        data['sameAs'] = [u for _, u in C.SITE['social']]
+    if EN.SITE['social']:
+        data['sameAs'] = [u for _, u in EN.SITE['social']]
     text = json.dumps(data, ensure_ascii=False, indent=1).replace('</', '<\\/')
     return f'<script type="application/ld+json">\n{text}\n</script>'
 
@@ -396,96 +447,73 @@ def build_home():
     stats = '<dl class="stats">' + ''.join(
         f'<div class="stat"><dt>{e(v)}</dt><dd>{e(l)}</dd></div>' for v, l in C.STATS) + '</dl>'
     hero = page_hero(
-        'Strategy · Capital · Market entry',
-        'Building companies, capital pathways [and market‑ready ventures.]',
-        'Elevate Arabia helps businesses, founders and investors structure, finance, govern and scale their '
-        'operations in Saudi Arabia through integrated advisory, capital readiness, venture support and '
-        'market-entry execution.',
-        actions=button('contact.html', 'Discuss a project') + link_arrow('services.html', 'Explore services'),
+        t('hero_eyebrow'), t('hero_title'), t('hero_lead'),
+        actions=button('contact.html', t('cta_discuss')) + link_arrow('services.html', t('explore_services')),
         extra=stats)
 
     services = section(
-        'Services', 'Built around the challenges [you need to solve.]',
+        t('services_eyebrow'), t('services_heading'),
         rows([dict(num=num(i + 1), title=a['label'], desc=a['short'], href=a['href']) for i, a in enumerate(AREAS)]),
-        intro='Rather than separate disciplines, we join business direction, financial structure and '
-              'implementation into one connected approach.',
-        footer='<div class="actions actions--tight">' + button('contact.html', 'Discuss a project')
-               + link_arrow('services.html', 'All services') + '</div>')
+        intro=t('services_intro'),
+        footer='<div class="actions actions--tight">' + button('contact.html', t('cta_discuss'))
+               + link_arrow('services.html', t('all_services')) + '</div>')
 
     steps = '<ol class="steps">' + ''.join(
-        f'<li class="step"><span class="step__num">{num(i + 1)}</span><h3>{e(t)}</h3><p>{e(d)}</p></li>'
-        for i, (t, d) in enumerate(C.STEPS)) + '</ol>'
-    approach = section('How we work', 'From complexity [to clarity.]', steps,
-                       intro='Every engagement is different, but the work generally moves from understanding '
-                             'the problem to building the right structure and supporting execution.')
+        f'<li class="step"><span class="step__num">{num(i + 1)}</span><h3>{e(x)}</h3><p>{e(d)}</p></li>'
+        for i, (x, d) in enumerate(C.STEPS)) + '</ol>'
+    approach = section(t('how_eyebrow'), t('how_heading'), steps, intro=t('how_intro'))
 
     who = section(
-        'Who we are', 'One integrated perspective. [Multiple disciplines.]',
-        f'''<p class="body-lg">We work with established firms, entrepreneurs and investors, combining commercial
-        planning, financial discipline, governance and sector understanding, with a focus on execution rather
-        than advice in isolation.</p>
+        t('who_eyebrow'), t('who_heading'),
+        f'''<p class="body-lg">{e(t("who_body"))}</p>
         <div class="panel">
-          <p class="eyebrow">International partner</p>
-          <p class="panel__title">Hirayama Holdings</p>
-          <p>Our Japan-based strategic partner brings manufacturing improvement and Gemba Kaizen expertise.</p>
-          {link_arrow('about.html#partnership', 'Our partnership')}
+          <p class="eyebrow">{e(t("partner_eyebrow"))}</p>
+          <p class="panel__title">{e(t("partner_short_name"))}</p>
+          <p>{e(t("partner_short_body"))}</p>
+          {link_arrow('about.html#partnership', t('our_partnership'))}
         </div>''',
-        footer=link_arrow('about.html', 'About Elevate Arabia'))
+        footer=link_arrow('about.html', t('about_link')))
 
-    network = section_wide(
-        'Clients', 'Network & [partners.]', logos(C.CLIENTS_NETWORK, cls='logos--grid'),
-        intro='Clients and partners across life sciences, technology, sustainability and finance.', id='clients')
+    network = section_wide(t('clients_eyebrow'), t('clients_heading'), logos(C.CLIENTS_NETWORK, cls='logos--grid'),
+                           intro=t('clients_intro'), id='clients')
 
     sectors = section(
-        'Sectors', 'Sector familiarity. [Business discipline.]',
+        t('sectors_eyebrow'), t('sectors_heading'),
         rows([dict(num=num(i + 1), title=s['label'], desc=s['desc'], href=f'sectors.html#{s["slug"]}')
               for i, s in enumerate(C.SECTORS)]),
-        intro='We apply advisory and business-building capabilities across innovation, advanced industry '
-              'and Saudi growth sectors.',
-        footer=link_arrow('sectors.html', 'All sectors'))
+        intro=t('sectors_intro'), footer=link_arrow('sectors.html', t('all_sectors')))
 
     body = hero + services + approach + who + network + sectors + cta(
-        'Let’s build what comes next.',
-        'Talk to the team about your business, investment or Saudi market opportunity.', 'Discuss a project')
-    page('index', 'Strategy, capital and Saudi market entry',
-         'Elevate Arabia helps businesses, founders and investors structure, finance, govern and scale '
-         'their operations in Saudi Arabia.', body)
+        t('home_cta_title'), t('home_cta_body'), t('cta_discuss'))
+    page('index', t('home_title'), t('home_desc'), body)
 
 
 def build_services():
-    hero = page_hero(
-        'Services', 'Business support, [connected end to end.]',
-        'Strategy, commercial planning, financial discipline, governance, investment preparation and Saudi '
-        'market execution, organized so you can find the right expertise quickly.')
+    hero = page_hero(t('services_eyebrow'), t('services_hero_title'), t('services_hero_lead'))
     listing = section(
-        'Service areas', 'Eight service areas.',
+        t('areas_eyebrow'), t('areas_heading'),
         rows([dict(num=num(i + 1), title=a['label'], desc=a['short'], href=a['href'], meta=a['tag'],
                    extra='<span class="row__tags">' + ''.join(f'<span>{e(x)}</span>' for x in a['items'][:3]) + '</span>')
               for i, a in enumerate(AREAS)]),
-        intro='Explore each area, or talk to us about a combination.')
+        intro=t('areas_intro'))
     journey = section(
-        'Approach', 'Not eight separate silos. [One business journey.]',
-        '<p class="body-lg">A client may begin with strategy, then need financial structure, governance, '
-        'investor readiness and market entry. We bring these together so each step builds on the last.</p>'
-        '<p class="journey"><span>Strategy</span><span>Structure</span><span>Capital</span><span>Execution</span></p>')
-    page('services', 'Services',
-         'Advisory, ventures, capital, Saudi market entry, automotive industrial consultancy and construction '
-         'technology from Elevate Arabia.',
-         hero + listing + journey + cta('Need a combination of capabilities?',
-                                        'Describe the business challenge and we can help determine a suitable '
-                                        'starting point.', 'Discuss a project'))
+        t('journey_eyebrow'), t('journey_heading'),
+        f'<p class="body-lg">{e(t("journey_body"))}</p>'
+        '<p class="journey">' + ''.join(f'<span>{e(x)}</span>' for x in t('journey_steps')) + '</p>')
+    page('services', t('services_title'), t('services_desc'),
+         hero + listing + journey + cta(t('services_cta_title'), t('services_cta_body'), t('cta_discuss')))
 
 
 def build_detail(item, is_sector=False):
     slug = item['slug']
-    parent = ('Sectors', 'sectors.html') if is_sector else ('Services', 'services.html')
+    parent = (t('nav_sectors'), 'sectors.html') if is_sector else (t('nav_services'), 'services.html')
     hero = page_hero(
         item['tag'], item['title'], item['intro'],
-        actions=button(f'contact.html?interest={slug}', 'Discuss this service' if not is_sector else 'Discuss your project')
-        + link_arrow('#support', 'Where we can help'),
-        crumbs=[('Home', 'index.html'), parent, (item['label'], '')])
+        actions=button(f'contact.html?interest={slug}', t('discuss_project') if is_sector else t('discuss_service'))
+        + link_arrow('#support', t('where_help_link')),
+        crumbs=[(t('home'), 'index.html'), parent, (item['label'], '')])
 
-    overview = section('Overview', 'Designed for [practical progress.]', f'<p class="body-lg">{e(item["overview"])}</p>')
+    overview = section(t('overview_eyebrow'), t('overview_heading'), f'<p class="body-lg">{e(item["overview"])}</p>')
 
     if item.get('areas'):
         support_body = '<div class="areas">' + ''.join(
@@ -494,83 +522,62 @@ def build_detail(item, is_sector=False):
             for i, a in enumerate(item['areas'])) + '</div>'
     else:
         support_body = plain_list(item['needs'])
-    support = section('What we support', 'Where we can help.', support_body, id='support')
+    support = section(t('support_eyebrow'), t('support_heading'), support_body, id='support')
 
     outcomes = section(
-        'Challenges & outcomes', 'What needs to [work better?]',
+        t('outcomes_eyebrow'), t('outcomes_heading'),
         f'''<div class="cols">
-          <div><h3>Common challenges</h3><p class="small">Typical issues we help resolve.</p>{plain_list(item["challenges"], numbered=True)}</div>
-          <div><h3>Typical outputs</h3><p class="small">Every engagement is scoped to your situation.</p>{plain_list(item["deliverables"], numbered=True)}</div>
+          <div><h3>{e(t("challenges_title"))}</h3><p class="small">{e(t("challenges_sub"))}</p>{plain_list(item["challenges"], numbered=True)}</div>
+          <div><h3>{e(t("outputs_title"))}</h3><p class="small">{e(t("outputs_sub"))}</p>{plain_list(item["deliverables"], numbered=True)}</div>
         </div>''')
 
-    questions = section('Questions', 'Good to know.', faq(item['faq']))
+    questions = section(t('faq_eyebrow'), t('faq_heading'), faq(item['faq']))
 
     related_items = [s for s in C.SERVICES if s['slug'] != slug][:3]
-    related = section('Related', 'Related services.',
+    related = section(t('related_eyebrow'), t('related_heading'),
                       rows([dict(title=s['label'], desc=s['short'], href=f'{s["slug"]}.html') for s in related_items]))
 
     body = hero + overview + support + outcomes + questions + related + cta(
-        'Have a specific challenge in mind?',
-        'Share your objectives and the team can discuss the relevant workstreams.',
-        'Enquire about this service' if not is_sector else 'Discuss your project',
-        href=f'contact.html?interest={slug}')
+        t('detail_cta_title'), t('detail_cta_body'),
+        t('discuss_project') if is_sector else t('enquire_service'), href=f'contact.html?interest={slug}')
     page(slug, item['label'], item['intro'], body)
 
 
 def build_sectors():
-    hero = page_hero(
-        'Sectors', 'Sector expertise, [commercial perspective.]',
-        'Different sectors face different market realities. The foundations of sound planning, finance, '
-        'governance and execution remain essential in each.')
-
+    hero = page_hero(t('sectors_eyebrow'), t('sectors_hero_title'), t('sectors_hero_lead'))
     items = []
     for i, s in enumerate(C.SECTORS):
         extra = (f'<span class="row__more">{link_arrow(s["link"], s["link_label"])}</span>' if s['link'] else '')
         items.append(dict(id=s['slug'], num=num(i + 1), title=s['label'], desc=s['desc'], meta=s['category'], extra=extra))
-    listing = section('Focus sectors', 'Where we work.', rows(items),
-                      intro='Seven focus sectors across innovation, industry, capital and consumer markets.')
-    why = section(
-        'Why it matters', 'Different sectors. [Shared disciplines.]',
-        '<p class="body-lg">Sector familiarity supports better commercial assumptions and investment '
-        'preparation. We combine this context with business modelling, capital readiness and Saudi market '
-        'execution.</p>',
-        footer=link_arrow('life-sciences.html', 'Life sciences in detail'))
-    page('sectors', 'Sectors',
-         'Sectors served by Elevate Arabia, from life sciences and advanced industry to education, '
-         'agriculture, media and national development.',
-         hero + listing + why + cta('Working in a specialized sector?',
-                                    'Tell us about the sector, geography and stage of your project.',
-                                    'Discuss your sector'))
+    listing = section(t('focus_eyebrow'), t('focus_heading'), rows(items), intro=t('focus_intro'))
+    why = section(t('why_eyebrow'), t('why_heading'), f'<p class="body-lg">{e(t("why_body"))}</p>',
+                  footer=link_arrow('life-sciences.html', t('ls_link')))
+    page('sectors', t('sectors_title'), t('sectors_desc'),
+         hero + listing + why + cta(t('sectors_cta_title'), t('sectors_cta_body'), t('sectors_cta_label')))
 
 
 def build_about():
-    hero = page_hero(
-        'About', 'A strategic growth and [integrated advisory firm.]',
-        'Elevate Arabia supports businesses, ventures and investors through connected strategy, finance, '
-        'governance, coordination and execution support.')
+    hero = page_hero(t('nav_about'), t('about_hero_title'), t('about_hero_lead'))
     who = section(
-        'Who we are', 'Clarity, control [and confidence.]',
-        '<p class="body-lg">We are commercially focused, integrated across disciplines and oriented toward '
-        'execution. We work with established companies and with new ventures pursuing growth in Saudi Arabia.</p>'
-        '<blockquote class="statement"><p>From concept and capital preparation to commercialization and '
-        'operations, a stronger business starts with the right structure.</p></blockquote>')
+        t('who_eyebrow'), t('about_who_heading'),
+        f'<p class="body-lg">{e(t("about_who_body"))}</p>'
+        f'<blockquote class="statement"><p>{e(t("about_statement"))}</p></blockquote>')
     values = section(
-        'Values', 'How we work.',
+        t('values_eyebrow'), t('values_heading'),
         '<ul class="grid-values">' + ''.join(
-            f'<li><span class="area__num">{num(i + 1)}</span><h3>{e(t)}</h3><p>{e(d)}</p></li>'
-            for i, (t, d) in enumerate(C.VALUES)) + '</ul>')
+            f'<li><span class="area__num">{num(i + 1)}</span><h3>{e(x)}</h3><p>{e(d)}</p></li>'
+            for i, (x, d) in enumerate(C.VALUES)) + '</ul>')
     partner = section(
-        'International partnership', 'A shared focus on [improvement.]',
-        '<p class="body-lg">Japan-based Hirayama Holdings is our strategic international partner, with a focus on '
-        'Gemba Kaizen, manufacturing performance and continuous improvement.</p>'
+        t('partnership_eyebrow'), t('partnership_heading'),
+        f'<p class="body-lg">{e(t("partnership_body"))}</p>'
         f'<figure class="photo">{img(C.PARTNER["photo"], C.PARTNER["photo_alt"])}'
         f'<figcaption>{e(C.PARTNER["photo_alt"])}.</figcaption></figure>'
-        '<div class="panel"><p class="eyebrow">International partner</p>'
+        f'<div class="panel"><p class="eyebrow">{e(t("partner_eyebrow"))}</p>'
         f'<p class="panel__title">{e(C.PARTNER["name"])}</p>'
-        '<p>Tokyo, Japan. Manufacturing capability, continuous improvement and industrial consulting.</p>'
-        f'{link_arrow(C.PARTNER["url"], "Visit Hirayama Holdings", external=True)}</div>'
+        f'<p>{e(t("partner_location"))}</p>'
+        f'{link_arrow(C.PARTNER["url"], t("visit_partner"), external=True)}</div>'
         + (f'<h3 class="group-title group-title--logos">{e(C.PARTNER_CLIENTS_LABEL)}</h3>'
-           + logos(C.CLIENTS_GLOBAL, cls='logos--grid logos--compact') if C.SHOW_PARTNER_CLIENTS else ''),
+           + logos(C.CLIENTS_GLOBAL, cls='logos--grid') if C.SHOW_PARTNER_CLIENTS else ''),
         id='partnership')
 
     def avatar(name, photo):
@@ -580,33 +587,27 @@ def build_about():
         return f'<span class="avatar avatar--initials" aria-hidden="true">{e(initials)}</span>'
 
     def people(arr):
+        # Names stay in Latin script; lang="en" gives screen readers the right pronunciation.
+        name_lang = '' if C is EN else ' lang="en"'
         return '<ul class="people">' + ''.join(
-            f'<li>{avatar(n, ph)}<span><span class="people__name">{e(n)}</span>'
+            f'<li>{avatar(n, ph)}<span><span class="people__name"{name_lang}>{e(n)}</span>'
             f'<span class="people__role">{e(r)}</span></span></li>'
             for n, r, ph in arr) + '</ul>'
 
     team = section(
-        'Team', 'Experience behind [the work.]',
-        f'<h3 class="group-title">Saudi Arabia <span>{len(C.TEAM_SAUDI)}</span></h3>{people(C.TEAM_SAUDI)}'
-        f'<h3 class="group-title">International <span>{len(C.TEAM_INTERNATIONAL)}</span></h3>{people(C.TEAM_INTERNATIONAL)}',
-        intro='Our team in Saudi Arabia, supported by international specialists in manufacturing and '
-              'continuous improvement.', id='team')
-    page('about', 'About',
-         'Elevate Arabia is a strategic growth and integrated advisory firm in Jeddah, working with businesses, '
-         'founders and investors.',
-         hero + who + values + partner + team + cta('Work with Elevate Arabia.',
-                                                    'Discuss a business challenge, potential engagement or '
-                                                    'partnership opportunity.', 'Contact the team'))
+        t('team_eyebrow'), t('team_heading'),
+        f'<h3 class="group-title">{e(t("team_saudi"))} <span>{len(C.TEAM_SAUDI)}</span></h3>{people(C.TEAM_SAUDI)}'
+        f'<h3 class="group-title">{e(t("team_international"))} <span>{len(C.TEAM_INTERNATIONAL)}</span></h3>{people(C.TEAM_INTERNATIONAL)}',
+        intro=t('team_intro'), id='team')
+    page('about', t('about_title'), t('about_desc'),
+         hero + who + values + partner + team + cta(t('about_cta_title'), t('about_cta_body'), t('about_cta_label')))
 
 
 def build_contact():
-    hero = page_hero(
-        'Contact', 'Let’s discuss [your next move.]',
-        'Whether you are entering Saudi Arabia, building a venture or preparing for investment, start with a '
-        'clear conversation.')
+    hero = page_hero(t('nav_contact'), t('contact_hero_title'), t('contact_hero_lead'))
 
     options = [(s['slug'], s.get('option', s['label'])) for s in C.SERVICES]
-    options += [('life-sciences', C.LIFE_SCIENCES['label']), ('other', 'Something else')]
+    options += [('life-sciences', C.LIFE_SCIENCES['label']), ('other', t('f_other'))]
     opts = ''.join(f'<option value="{v}">{e(l)}</option>' for v, l in options)
 
     def field(fid, label, control, required=False, hint=''):
@@ -619,67 +620,81 @@ def build_contact():
         ids = ([f'{fid}-hint'] if hint else []) + [f'{fid}-error']
         return f'aria-describedby="{" ".join(ids)}"'
 
+    i18n = dict(required=t('js_required'), email=t('js_email'), min=t('js_min'), fixOne=t('js_fix_one'),
+                fixMany=t('js_fix_many'), ok=t('js_ok'), okManual=t('js_ok_manual'), subject=t('js_subject'),
+                labels=dict(name=t('js_lbl_name'), email=t('js_lbl_email'), company=t('js_lbl_company'),
+                            phone=t('js_lbl_phone'), interest=t('js_lbl_interest')))
+
     form = f'''
-<form class="form" id="enquiry-form" novalidate data-to="{e(C.SITE["enquiry_email"])}">
-  <p class="small">Fields marked <span class="req" aria-hidden="true">*</span><span class="visually-hidden">with an asterisk</span> are required.</p>
+<form class="form" id="enquiry-form" novalidate data-to="{e(C.SITE["enquiry_email"])}" data-i18n="{e(json.dumps(i18n, ensure_ascii=False))}">
+  <p class="small">{e(t("required_before"))} <span class="req" aria-hidden="true">*</span><span class="visually-hidden">{e(t("required_sr"))}</span> {e(t("required_after"))}</p>
   <div class="form-row">
-    {field('f-name', 'Full name', f'<input id="f-name" name="name" autocomplete="name" required {described("f-name")} data-required="Please enter your name.">', True)}
-    {field('f-email', 'Email', f'<input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" required {described("f-email")} data-required="Please enter your email address.">', True)}
+    {field('f-name', t('f_name'), f'<input id="f-name" name="name" autocomplete="name" required {described("f-name")} data-required="{e(t("f_name_req"))}">', True)}
+    {field('f-email', t('f_email'), f'<input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" dir="ltr" required {described("f-email")} data-required="{e(t("f_email_req"))}">', True)}
   </div>
   <div class="form-row">
-    {field('f-company', 'Company', '<input id="f-company" name="company" autocomplete="organization">')}
-    {field('f-phone', 'Phone', '<input id="f-phone" name="phone" type="tel" autocomplete="tel">')}
+    {field('f-company', t('f_company'), '<input id="f-company" name="company" autocomplete="organization">')}
+    {field('f-phone', t('f_phone'), '<input id="f-phone" name="phone" type="tel" autocomplete="tel" dir="ltr">')}
   </div>
-  {field('f-interest', 'How can we help?', f'<select id="f-interest" name="interest" required {described("f-interest")} data-required="Please choose a service."><option value="">Choose a service</option>{opts}</select>', True)}
-  {field('f-message', 'Project details', f'<textarea id="f-message" name="message" rows="6" minlength="20" required {described("f-message", True)} data-required="Please tell us a little about your project."></textarea>', True, hint='Your objectives, current stage and the support you need.')}
+  {field('f-interest', t('f_interest'), f'<select id="f-interest" name="interest" required {described("f-interest")} data-required="{e(t("f_interest_req"))}"><option value="">{e(t("f_choose"))}</option>{opts}</select>', True)}
+  {field('f-message', t('f_message'), f'<textarea id="f-message" name="message" rows="6" minlength="20" required {described("f-message", True)} data-required="{e(t("f_message_req"))}"></textarea>', True, hint=t('f_message_hint'))}
   <div class="form-status" id="form-status" role="status" aria-live="polite"></div>
-  <button class="button" type="submit">Prepare email</button>
-  <p class="small">This opens a pre-filled email in your mail app so you can review it before sending. Nothing is stored on this website. See our <a href="privacy.html">Privacy Policy</a>.</p>
+  <button class="button" type="submit">{e(t("submit"))}</button>
+  <p class="small">{e(t("form_note"))} <a href="privacy.html">{e(t("privacy"))}</a>.</p>
 </form>'''
 
     details = '<dl class="contact-list">' + ''.join(
-        f'<div><dt>Email</dt><dd><a href="mailto:{m}">{m}</a></dd></div>' for m in C.SITE['emails']) + ''.join(
-        f'<div><dt>Phone</dt><dd><a href="tel:{t}">{e(p)}</a></dd></div>' for p, t in C.SITE['phones']) + (
-        f'<div><dt>Office</dt><dd>{", ".join(e(x) for x in C.SITE["address"])}'
-        f'<span class="dd-link">{link_arrow(C.SITE["maps"], "Open in Google Maps", external=True)}</span></dd></div>') + (
-        f'<div><dt>Social</dt><dd class="dd-links">' + ''.join(link_arrow(u, n, external=True) for n, u in C.SITE['social'])
+        f'<div><dt>{e(t("email_label"))}</dt><dd>{mailto(m)}</dd></div>' for m in C.SITE['emails']) + ''.join(
+        f'<div><dt>{e(t("phone_label"))}</dt><dd>{tel(p, n)}</dd></div>' for p, n in C.SITE['phones']) + (
+        f'<div><dt>{e(t("office_label"))}</dt><dd>{"، ".join(e(x) for x in C.SITE["address"]) if C is AR else ", ".join(e(x) for x in C.SITE["address"])}'
+        f'<span class="dd-link">{link_arrow(C.SITE["maps"], t("maps"), external=True)}</span></dd></div>') + (
+        f'<div><dt>{e(t("social_label"))}</dt><dd class="dd-links">' + ''.join(link_arrow(u, n, external=True) for n, u in C.SITE['social'])
         + '</dd></div>' if C.SITE['social'] else '') + '</dl>'
 
     body = hero + f'''
 <section class="section">
   <div class="wrap split">
     <div class="split__head">
-      <p class="eyebrow">Direct contact</p>
-      <h2>{hl('Tell us what [you’re building.]')}</h2>
+      <p class="eyebrow">{e(t("direct_eyebrow"))}</p>
+      <h2>{hl(t("direct_heading"))}</h2>
       {details}
     </div>
     <div class="split__body">
-      <h2 class="visually-hidden">Enquiry form</h2>
+      <h2 class="visually-hidden">{e(t("form_heading"))}</h2>
       {form}
     </div>
   </div>
 </section>'''
-    page('contact', 'Contact',
-         'Contact Elevate Arabia in Jeddah about advisory, ventures, capital readiness or Saudi market entry.', body)
+    page('contact', t('contact_title'), t('contact_desc'), body)
 
 
 def build_legal():
-    updated = f'<p class="legal-date">Last updated: {e(C.LEGAL_UPDATED)}</p>'
-    t = C.TERMS
-    terms = (page_hero('Legal', 'Terms & Conditions', 'The terms that apply to using this website.')
-             + section('Legal disclaimer', 'Disclaimer.', updated + ''.join(f'<p>{e(x)}</p>' for x in t['disclaimer']),
-                       id='disclaimer')
-             + section('Terms of use', 'Terms of use.',
-                       f'<p>{e(t["intro"])}</p><ol class="legal-clauses">' + ''.join(
-                           f'<li><h3>{e(h)}</h3><p>{e(x)}</p></li>' for h, x in t['clauses']) + '</ol>', id='terms'))
-    page('terms', 'Terms & Conditions', 'The terms that apply to using the Elevate Arabia website.', terms)
+    updated = f'<p class="legal-date">{e(t("last_updated", date=C.LEGAL_UPDATED))}</p>'
+    terms_text = C.TERMS
+    terms = (page_hero(t('legal_eyebrow'), t('terms'), t('terms_lead'))
+             + section(t('disclaimer_eyebrow'), t('disclaimer_heading'),
+                       updated + ''.join(f'<p>{e(x)}</p>' for x in terms_text['disclaimer']), id='disclaimer')
+             + section(t('termsofuse_eyebrow'), t('termsofuse_heading'),
+                       f'<p>{e(terms_text["intro"])}</p><ol class="legal-clauses">' + ''.join(
+                           f'<li><h3>{e(h)}</h3><p>{e(x)}</p></li>' for h, x in terms_text['clauses']) + '</ol>', id='terms'))
+    page('terms', t('terms'), t('terms_desc'), terms)
 
     pr = C.PRIVACY
-    contact = f'<p>Questions or requests about your personal data: <a href="mailto:{pr["contact"]}">{pr["contact"]}</a>.</p>'
-    privacy = (page_hero('Legal', 'Privacy Policy', 'How we handle personal data, and how to contact us about it.')
-               + section('Privacy', 'Your personal data.',
+    contact = f'<p>{e(t("privacy_contact"))} {mailto(pr["contact"])}.</p>'
+    privacy = (page_hero(t('legal_eyebrow'), t('privacy'), t('privacy_lead'))
+               + section(t('privacy_eyebrow'), t('privacy_heading'),
                          updated + ''.join(f'<p>{e(x)}</p>' for x in pr['paragraphs']) + contact + f'<p>{e(pr["changes"])}</p>'))
-    page('privacy', 'Privacy Policy', 'How Elevate Arabia handles personal data, and how to contact us about it.', privacy)
+    page('privacy', t('privacy'), t('privacy_desc'), privacy)
+
+
+def build_404():
+    """One 404 page at the site root (GitHub Pages serves only that one), in both languages."""
+    arabic = (f'<p class="nf-alt" lang="ar" dir="rtl">{e(AR.UI["nf_title"])} {e(AR.UI["nf_lead"])} '
+              f'<a href="{AR.LANG["path"]}index.html">{e(AR.UI["nf_home"])}</a></p>')
+    body = page_hero(t('nf_eyebrow'), t('nf_title'), t('nf_lead'),
+                     actions=button('index.html', t('nf_home')) + link_arrow('contact.html', t('nf_contact')),
+                     extra=arabic)
+    page('404', t('nf_title').rstrip('.'), t('nf_lead'), body)
 
 
 def redirect_page(new):
@@ -688,7 +703,7 @@ def redirect_page(new):
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Page moved | {e(C.SITE["name"])}</title>
+<title>Page moved | {e(EN.SITE["name"])}</title>
 <meta name="robots" content="noindex">
 <link rel="canonical" href="{e(target)}">
 <meta http-equiv="refresh" content="0; url={e(new)}">
@@ -702,11 +717,25 @@ def redirect_page(new):
 '''
 
 
-def build_404():
-    body = page_hero('Error 404', 'Page not found.',
-                     'The page you are looking for does not exist or has moved.',
-                     actions=button('index.html', 'Back to home') + link_arrow('contact.html', 'Contact us'))
-    page('404', 'Page not found', 'The page you are looking for does not exist or has moved.', body)
+def build_language(mod):
+    set_language(mod)
+    PAGES.clear()
+    build_home()
+    build_services()
+    for s in C.SERVICES:
+        build_detail(s)
+    build_detail(C.LIFE_SCIENCES, is_sector=True)
+    build_sectors()
+    build_about()
+    build_contact()
+    build_legal()
+    if mod is EN:
+        build_404()
+    out = OUT / mod.LANG['path']
+    out.mkdir(parents=True, exist_ok=True)
+    for name, html in PAGES.items():
+        (out / name).write_text(html, encoding='utf-8')
+    return sorted(PAGES)
 
 
 # --------------------------------------------------------------------------- checks
@@ -716,9 +745,12 @@ class _Collector(HTMLParser):
         super().__init__()
         self.ids, self.links, self.h1 = [], [], 0
         self.empty_headings, self._heading, self._heading_text = 0, None, ''
+        self.html_lang = None
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        if tag == 'html':
+            self.html_lang = a.get('lang')
         if tag in ('h1', 'h2', 'h3', 'h4'):
             self._heading, self._heading_text = tag, ''
         if tag == 'img' and self._heading:
@@ -742,25 +774,28 @@ class _Collector(HTMLParser):
             self._heading = None
 
 
-INVISIBLE = re.compile('[\u200b\u200c\u200d\u2060\ufeff]')
+INVISIBLE = re.compile('[​‌‍⁠﻿]')
 
 
 def check(out):
     parsed = {}
-    for p in out.glob('*.html'):
+    for p in out.rglob('*.html'):
         c = _Collector()
         text = p.read_text(encoding='utf-8')
         c.feed(text)
         c.invisible = len(INVISIBLE.findall(text))
-        parsed[p.name] = c
+        parsed[p.resolve()] = c
     errors = []
-    for name, c in parsed.items():
+    for path, c in parsed.items():
+        name = path.relative_to(out.resolve())
         if c.h1 != 1:
             errors.append(f'{name}: expected one <h1>, found {c.h1}')
         if c.empty_headings:
             errors.append(f'{name}: {c.empty_headings} empty heading(s)')
         if c.invisible:
             errors.append(f'{name}: {c.invisible} invisible character(s)')
+        if name.parts[0] == 'ar' and c.html_lang != 'ar':
+            errors.append(f'{name}: Arabic page without lang="ar"')
         dupes = {i for i in c.ids if c.ids.count(i) > 1}
         if dupes:
             errors.append(f'{name}: duplicate ids {sorted(dupes)}')
@@ -768,10 +803,10 @@ def check(out):
             u = urlsplit(link)
             if u.scheme or link.startswith('//'):
                 continue  # external, mailto:, tel:
-            target = u.path or name
-            if not (out / target).exists():
+            target = (path.parent / u.path).resolve() if u.path else path
+            if not target.exists():
                 errors.append(f'{name}: broken link "{link}"')
-            elif u.fragment and target.endswith('.html') and u.fragment not in parsed[target].ids:
+            elif u.fragment and target.suffix == '.html' and u.fragment not in parsed[target].ids:
                 errors.append(f'{name}: missing anchor "{link}"')
     return errors
 
@@ -784,26 +819,15 @@ def main():
     OUT.mkdir()
     shutil.copytree(ROOT / 'assets', OUT / 'assets')
 
-    build_home()
-    build_services()
-    for s in C.SERVICES:
-        build_detail(s)
-    build_detail(C.LIFE_SCIENCES, is_sector=True)
-    build_sectors()
-    build_about()
-    build_contact()
-    build_legal()
-    build_404()
-
-    for name, html in PAGES.items():
-        (OUT / name).write_text(html, encoding='utf-8')
+    built = {mod.LANG['code']: build_language(mod) for mod in LANGS}
+    set_language(EN)
     for old, new in REDIRECTS.items():
-        assert f'{old}.html' not in PAGES, old
+        assert f'{old}.html' not in built['en'], old
         (OUT / f'{old}.html').write_text(redirect_page(new), encoding='utf-8')
 
     robots = 'User-agent: *\n' + ('Allow: /\n' if INDEXABLE else 'Disallow: /\n')
     if SITE_URL:
-        urls = [f'{SITE_URL}/' if n == 'index.html' else f'{SITE_URL}/{n}' for n in sorted(PAGES) if n != '404.html']
+        urls = [page_url(m, n) for m in LANGS for n in built[m.LANG['code']] if n != '404.html']
         (OUT / 'sitemap.xml').write_text(
             '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
             + ''.join(f'  <url><loc>{e(u)}</loc></url>\n' for u in urls) + '</urlset>\n', encoding='utf-8')
@@ -815,7 +839,8 @@ def main():
     if errors:
         print('Build checks failed:', *errors, sep='\n  ', file=sys.stderr)
         sys.exit(1)
-    print(f'Built {len(PAGES)} pages into {OUT.relative_to(ROOT)}/ '
+    counts = ', '.join(f'{len(v)} {k}' for k, v in built.items())
+    print(f'Built {counts} pages into {OUT.relative_to(ROOT)}/ '
           f'({"indexable" if INDEXABLE else "noindex"}{", " + SITE_URL if SITE_URL else ""}). Links OK.')
 
     if '--serve' in sys.argv:
