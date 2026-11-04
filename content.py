@@ -22,10 +22,6 @@ SITE = dict(
     # The live site has none: its icons point to Wix template accounts. Add the
     # real URLs here, e.g. ('LinkedIn', 'https://www.linkedin.com/company/...').
     social=[],
-    legal=dict(
-        privacy='https://www.elevatearabia.com/privacy-policy',
-        terms='https://www.elevatearabia.com/terms-and-coniditions',
-    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -156,7 +152,7 @@ SERVICES = [
     dict(
         slug='construction-technology',
         label='Construction Technology',
-        short='Technology-led construction systems and commercialization, featuring Quadratech.',
+        short='Technology-led construction systems, delivery models and commercialization.',
         tag='Built environment',
         title='Advance construction through technology-led delivery',
         intro='Strategic and commercialization support for modular, technology-driven and industrialized building methods.',
@@ -239,12 +235,16 @@ CLIENTS_NETWORK = [
     ('blue-camel', 'Blue Camel'), ('cellular-therapeutics-center', 'Cellular Therapeutics Center'),
     ('saudi-ai', 'Saudi AI'), ('saudi-nih', 'Saudi NIH'), ('igene', 'iGene'),
     ('thuraya-healthcare', 'Thuraya Healthcare'), ('ilf', 'ILF'), ('al-bakri', 'Al Bakri'), ('neem', 'Neem'),
-    ('elevate-financial-express', 'Elevate Financial Express'), ('omixcube', 'OMIXCUBE'), ('skylight', 'Skylight'),
+    ('omixcube', 'OMIXCUBE'), ('skylight', 'Skylight'),
     ('hijaz-green', 'Hijaz Green'), ('xgenome', 'XGenome Biotech Company'),
 ]
 # CLIENTS_GLOBAL is the live logo ticker shown under the "1,500+ companies" claim.
-# CONFIRM these are Elevate's own clients (several match the partner's and team's
-# background) and that the trademarks may be displayed. See docs/REVIEW.md.
+# Both the logos and the 1,500+ figure appear to describe the partner Hirayama
+# Holdings, not Elevate (see docs/review-status.md, finding 2). They stay hidden
+# until confirmed. Set SHOW_PARTNER_CLIENTS = True only with written permission
+# for each logo; they then appear on the About page, labelled as the partner's.
+SHOW_PARTNER_CLIENTS = False
+PARTNER_CLIENTS_LABEL = 'Clients of our partner Hirayama Holdings'
 CLIENTS_GLOBAL = [
     ('toyota', 'Toyota'), ('siemens', 'Siemens'), ('samsung', 'Samsung'), ('hitachi', 'Hitachi'),
     ('panasonic', 'Panasonic'), ('mercedes-benz', 'Mercedes-Benz'), ('mitsubishi-motors', 'Mitsubishi Motors'),
@@ -268,7 +268,7 @@ TEAM_SAUDI = [
     ('Osama Albakry', 'GM & Co-Founder', 'osama-albakry'),
     ('Eyad Albakry', 'Legal Counsel', 'eyad-albakry'),
     ('Waddah Swar', 'Head of Eastern Province', 'waddah-swar'),
-    ('Ibrahim AlBakry', 'CFO', 'ibrahim-albakry'),
+    ('Ibrahim Albakry', 'CFO', 'ibrahim-albakry'),
     ('Mohammed Batarfi', 'Financial Consultant', 'mohammed-batarfi'),
     ('Mohammed Saqib Bashir', 'Automotive Industrial Consultant', 'mohammed-saqib-bashir'),
     ('Abdelrafea Fakher', 'Lean Management Specialist', 'abdelrafea-fakher'),
@@ -300,8 +300,58 @@ STEPS = [
     ('Execute', 'Turn decisions into prioritized action and practical support.'),
 ]
 
+# Only figures that are verifiably Elevate's own. The live site's "1,500+" belongs
+# to the partner (see SHOW_PARTNER_CLIENTS above).
 STATS = [
-    ('1,500+', 'companies have found their solutions with us'),
-    ('Saudi-focused', 'local market and execution context'),
+    (str(sum(len(s.get('areas') or [s]) for s in SERVICES)), 'service areas, from strategy to market entry'),
+    (str(len(TEAM_SAUDI) + len(TEAM_INTERNATIONAL)), 'team members in Saudi Arabia and Japan'),
     ('Hirayama Holdings', 'our strategic international partner, Japan'),
 ]
+
+# ---------------------------------------------------------------------------
+# Legal pages. Text from the live site (November 2026) with the research notes
+# removed and the cookie statement corrected for this site, which sets no
+# cookies. Have both reviewed by a lawyer before launch; update LEGAL_UPDATED
+# whenever the text changes.
+# ---------------------------------------------------------------------------
+LEGAL_UPDATED = '4 November 2026'
+
+TERMS = dict(
+    disclaimer=[
+        'The information on this website is provided for general informational purposes only and does not constitute legal, financial, tax, audit, regulatory, investment, or other professional advice under the laws and regulations of the Kingdom of Saudi Arabia. Any reliance on this website or its content is at the user’s own risk.',
+        'Elevate Arabia makes reasonable efforts to ensure that website content is accurate and up to date. However, no representation or warranty, express or implied, is given as to the accuracy, completeness, reliability, or suitability of any content on this website. Content may be updated, amended, or removed without notice.',
+        'Nothing on this website creates any client, advisory, fiduciary, legal, audit, employment, partnership, or other professional relationship unless and until formally agreed in writing.',
+        'References on this website to Saudi legal, regulatory, governance, privacy, compliance, or market matters are general in nature only. Users should obtain independent professional advice appropriate to their specific circumstances before making any commercial, legal, financial, regulatory, or operational decision.',
+        'Any personal data collected through this website will be handled in accordance with applicable laws and regulations in the Kingdom of Saudi Arabia, including the Saudi Personal Data Protection Law.',
+        'This website may contain links to third-party websites or external resources. Elevate Arabia does not control and is not responsible for the content, availability, security, or privacy practices of any third-party site.',
+        'All intellectual property rights in this website and its contents, unless otherwise stated, are reserved.',
+    ],
+    intro='By accessing or using this website, you agree to these Terms of Use. If you do not agree, please do not use this website.',
+    clauses=[
+        ('Website purpose', 'This website is provided for general information about Elevate Arabia, its services, sectors, and areas of activity. Nothing on this website constitutes legal, financial, tax, audit, investment, regulatory, or other professional advice.'),
+        ('No professional relationship', 'Your use of this website does not create any client, advisory, fiduciary, partnership, employment, or other professional relationship with Elevate Arabia. Any professional engagement will be subject to separate written agreement.'),
+        ('Permitted use', 'You may use this website only for lawful purposes and in a way that does not damage, disrupt, misuse, or interfere with the website, its content, or its operation.'),
+        ('Accuracy of information', 'We make reasonable efforts to keep website content accurate and up to date. However, we do not guarantee that all content will always be complete, accurate, or current. Content may be updated, amended, or removed without notice.'),
+        ('Third-party links', 'This website may include links to third-party websites for convenience only. Elevate Arabia does not control and is not responsible for the content, availability, or practices of any third-party website.'),
+        ('Intellectual property', 'Unless otherwise stated, all content on this website, including text, layout, branding, graphics, and other materials, is owned by or licensed to Elevate Arabia and is protected by applicable laws. You may not copy, reproduce, republish, distribute, modify, or commercially exploit website content without prior written permission.'),
+        ('Privacy', 'Any personal data submitted through this website will be handled in accordance with our Privacy Policy and applicable laws and regulations in the Kingdom of Saudi Arabia, including the Saudi Personal Data Protection Law.'),
+        ('Limitation of liability', 'To the fullest extent permitted by applicable law, Elevate Arabia shall not be liable for any direct, indirect, incidental, consequential, or other loss or damage arising from or related to the use of, or reliance on, this website or its content.'),
+        ('Governing law', 'These Terms of Use shall be governed by and interpreted in accordance with the laws and regulations of the Kingdom of Saudi Arabia.'),
+        ('Changes', 'We may update these Terms of Use from time to time. Any updates will be posted on this page with the revised “Last updated” date.'),
+    ],
+)
+
+PRIVACY = dict(
+    contact='os@elevatearabia.com',
+    paragraphs=[
+        'Elevate Arabia respects your privacy and is committed to protecting personal data in accordance with applicable laws and regulations in the Kingdom of Saudi Arabia.',
+        'We may collect personal data such as your name, company name, job title, email address, phone number, and any information you provide through our website, email, or other communications. We may also collect limited technical data such as IP address and browser information.',
+        'We use personal data to respond to enquiries, provide our services, manage business relationships, improve our website and operations, and comply with legal or regulatory obligations.',
+        'We do not sell personal data. We may share personal data only where necessary with service providers, professional advisers, or authorities where required by law.',
+        'We take reasonable technical and organizational measures to protect personal data from unauthorized access, misuse, loss, or disclosure.',
+        'Where applicable under Saudi law, you may have rights to request access to your personal data, request correction, request deletion where permitted, and withdraw consent where consent is the basis for processing.',
+        'If personal data is transferred outside Saudi Arabia, we will do so in accordance with applicable legal requirements.',
+        'This website does not set cookies and does not use analytics or advertising trackers. The enquiry form does not send or store your details; it opens a pre-filled email in your own mail app.',
+    ],
+    changes='We may update this Privacy Policy from time to time. Any updates will be posted on this page with the revised “Last updated” date.',
+)

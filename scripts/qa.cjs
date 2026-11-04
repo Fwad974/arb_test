@@ -6,8 +6,10 @@
  *   node scripts/qa.cjs              checks only
  *   node scripts/qa.cjs --shots      checks + screenshots in ./qa-output
  *
- * Checks: horizontal overflow at 6 widths, JS errors, AA text contrast,
- * mobile menu, anchors clearing the sticky header, contact form behaviour.
+ * Checks: horizontal overflow at 7 widths (320-2560px), JS errors, AA text
+ * contrast, headline on the first screen, mobile menu, anchors clearing the
+ * sticky header, contact form behaviour, redirects from old addresses, no
+ * cookies, and no leftover research notes in the legal text.
  */
 const http = require('http');
 const fs = require('fs');
@@ -34,14 +36,15 @@ function serve() {
   if (!fs.existsSync(DIST)) { console.error('dist/ not found. Run `python3 build.py` first.'); process.exit(1); }
   const server = await serve();
   const base = `http://127.0.0.1:${server.address().port}/`;
-  const pages = fs.readdirSync(DIST).filter((f) => f.endsWith('.html'));
+  const redirectStubs = ['home-1', 'blank', 'blank-1', 'blank-2', 'blank-3', 'blank-4', 'blank-5', 'terms-and-coniditions', 'privacy-policy'].map((n) => n + '.html');
+  const pages = fs.readdirSync(DIST).filter((f) => f.endsWith('.html') && !redirectStubs.includes(f));
   const browser = await chromium.launch();
   const failures = [];
   const fail = (msg) => failures.push(msg);
   if (SHOTS) fs.mkdirSync(OUT, { recursive: true });
 
   // 1. Layout + errors + contrast across widths
-  for (const width of [320, 375, 768, 1024, 1280, 1440]) {
+  for (const width of [320, 375, 768, 1024, 1280, 1440, 2560]) {
     const page = await browser.newPage({ viewport: { width, height: 900 } });
     page.on('pageerror', (err) => fail(`JS error @${width}: ${err.message}`));
     page.on('console', (msg) => { if (msg.type() === 'error') fail(`console error @${width}: ${msg.text()}`); });
@@ -49,6 +52,11 @@ function serve() {
       await page.goto(base + name);
       const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
       if (scroll > width) fail(`${name} @${width}px: horizontal overflow (${scroll}px)`);
+      if (width === 1280) {
+        const text = await page.evaluate(() => document.body.innerText);
+        for (const note of ['Saudi official website', 'SDAIA states', 'The PDPL is the principal']) if (text.includes(note)) fail(`${name}: leftover research note "${note}"`);
+        if (await page.evaluate(() => document.cookie !== '')) fail(`${name}: sets a cookie`);
+      }
       if (width === 375 || width === 1280) {
         const low = await page.evaluate(() => {
           const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number);
@@ -79,8 +87,17 @@ function serve() {
     await page.close();
   }
 
+  // 2. Headline, intro and main button on the first screen (laptop) / headline (phone)
+  for (const [w, h, sel] of [[1280, 720, '.hero .button'], [1366, 768, '.hero .button'], [375, 667, '.hero h1']]) {
+    const p = await browser.newPage({ viewport: { width: w, height: h } });
+    await p.goto(base + 'index.html');
+    const bottom = await p.evaluate((s) => document.querySelector(s).getBoundingClientRect().bottom, sel);
+    if (bottom > h) fail(`home @${w}x${h}: "${sel}" below the first screen (${Math.round(bottom)}px)`);
+    await p.close();
+  }
+
   const page = await browser.newPage({ viewport: { width: 375, height: 800 } });
-  // 2. Mobile menu
+  // 3. Mobile menu
   await page.goto(base + 'index.html');
   const toggle = page.locator('.nav-toggle');
   if (await page.locator('#site-nav').isVisible()) fail('mobile nav visible before opening');
@@ -92,7 +109,7 @@ function serve() {
   await toggle.click(); await page.locator('#site-nav a[href="about.html"]').click(); await page.waitForURL(/about/);
   if (await page.locator('#site-nav').isVisible()) fail('mobile nav stayed open after navigation');
 
-  // 3. Anchors clear the sticky header
+  // 4. Anchors clear the sticky header
   await page.setViewportSize({ width: 1280, height: 800 });
   for (const target of ['advisory.html#finance', 'about.html#partnership', 'sectors.html#education']) {
     await page.goto(base + target); await page.waitForTimeout(400);
@@ -100,7 +117,7 @@ function serve() {
     if (top < header) fail(`${target}: target hidden under sticky header (${Math.round(top)} < ${Math.round(header)})`);
   }
 
-  // 4. Contact form
+  // 5. Contact form
   await page.goto(base + 'contact.html?interest=capital');
   if ((await page.inputValue('#f-interest')) !== 'capital') fail('?interest= did not preselect the service');
   await page.selectOption('#f-interest', '');
@@ -131,12 +148,20 @@ function serve() {
   if (!href || !href.startsWith('mailto:ceo@elevatearabia.com?subject=Website%20enquiry%3A%20Market%20Entry')) fail(`mailto link wrong: ${href}`);
   if (href && decodeURIComponent(href).includes('Company:')) fail('empty optional field leaked into email body');
 
-  // 5. 404 page is served for unknown URLs
+  // 6. Old Wix addresses redirect to the new pages
+  for (const [old, now] of [['home-1.html', 'services.html'], ['blank-3.html', 'advisory.html'], ['terms-and-coniditions.html', 'terms.html']]) {
+    await page.goto(base + old);
+    await page.waitForURL((u) => u.pathname.endsWith(now), { timeout: 5000 }).catch(() => fail(`${old} did not redirect to ${now}`));
+  }
+  const cookies = await page.context().cookies();
+  if (cookies.length) fail(`cookies set: ${cookies.map((c) => c.name).join(', ')}`);
+
+  // 7. 404 page is served for unknown URLs
   const res = await page.goto(base + 'nope/deeper.html');
   if (res.status() !== 404 || !(await page.textContent('h1')).includes('not found')) fail('404 page not served');
 
   await browser.close();
   server.close();
   if (failures.length) { console.error(`QA FAILED (${failures.length})\n  ` + failures.join('\n  ')); process.exit(1); }
-  console.log(`QA passed: ${pages.length} pages x 6 widths, contrast, menu, anchors, form, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
+  console.log(`QA passed: ${pages.length} pages x 7 widths, contrast, first screen, menu, anchors, form, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
 })();

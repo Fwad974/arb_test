@@ -10,6 +10,7 @@ Environment (optional, set in .github/workflows/pages.yml for deploys):
     INDEXABLE   "true" to allow search engines. Default is noindex so a
                 preview deploy never competes with the live site in search.
 """
+import json
 import os
 import re
 import shutil
@@ -108,7 +109,16 @@ def logos(items, area=4200, max_w=150, cls=''):
     return f'<ul class="logos {cls}">' + ''.join(out) + '</ul>'
 
 
-BRAND = 'brand/elevate-wordmark.webp'
+BRAND = 'brand/elevate-wordmark.webp'            # original beige wordmark, for dark backgrounds
+BRAND_DARK = 'brand/elevate-wordmark-dark.webp'  # navy variant for light backgrounds (beige on white is 2.4:1)
+
+# Old Wix addresses -> new pages. GitHub Pages serves /home-1 from home-1.html,
+# so a small redirect page keeps old links and search results working.
+REDIRECTS = {
+    'home-1': 'services.html', 'blank': 'ventures.html', 'blank-1': 'life-sciences.html',
+    'blank-2': 'capital.html', 'blank-3': 'advisory.html', 'blank-4': 'market-entry.html',
+    'blank-5': 'sectors.html', 'terms-and-coniditions': 'terms.html', 'privacy-policy': 'privacy.html',
+}
 
 
 def section(eyebrow, heading, body, intro='', id=None, footer=''):
@@ -273,8 +283,10 @@ def layout(slug, title, description, body):
                        '<meta name="twitter:card" content="summary_large_image">']
     if not INDEXABLE or slug == '404':
         head_extra.append('<meta name="robots" content="noindex">')
+    if slug == 'index':
+        head_extra.append(organization_jsonld())
 
-    service_links = ''.join(f'<li><a href="{s["slug"]}.html">{e(s["label"])}</a></li>' for s in C.SERVICES)
+    service_links = ''.join(f'<li><a href="{a["href"]}">{e(a["label"])}</a></li>' for a in AREAS)
     emails = ''.join(f'<li><a href="mailto:{m}">{m}</a></li>' for m in C.SITE['emails'])
     phones = ''.join(f'<li><a href="tel:{t}">{e(p)}</a></li>' for p, t in C.SITE['phones'])
     social = ''
@@ -297,6 +309,8 @@ def layout(slug, title, description, body):
 {chr(10).join(head_extra)}
 <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+<link rel="preload" href="assets/fonts/ibm-plex-sans-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/ibm-plex-sans-latin-600.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/styles.css">
 <script>document.documentElement.classList.add('js')</script>
 <script src="assets/js/app.js" defer></script>
@@ -305,7 +319,7 @@ def layout(slug, title, description, body):
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="wrap site-header__inner">
-    <a class="brand" href="index.html">{img(BRAND, 'Elevate Arabia home', height=26, lazy=False)}</a>
+    <a class="brand" href="index.html">{img(BRAND_DARK, 'Elevate Arabia home', height=26, lazy=False)}</a>
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">{icon("menu", "icon icon--menu")}{icon("close", "icon icon--close")}</button>
     <nav class="site-nav" id="site-nav" aria-label="Main">
       {nav}
@@ -329,7 +343,7 @@ def layout(slug, title, description, body):
       </div>
       <div>
         <h2 class="footer-title">Company</h2>
-        <ul><li><a href="about.html">About</a></li><li><a href="sectors.html">Sectors</a></li><li><a href="life-sciences.html">Life Sciences</a></li><li><a href="contact.html">Contact</a></li></ul>
+        <ul><li><a href="about.html">About</a></li><li><a href="sectors.html">Sectors</a></li><li><a href="contact.html">Contact</a></li></ul>
       </div>
       <div>
         <h2 class="footer-title">Contact</h2>
@@ -348,6 +362,25 @@ def layout(slug, title, description, body):
 </body>
 </html>
 '''
+
+
+def organization_jsonld():
+    """Company details for search engines (name, address, phones, email, logo)."""
+    street, city = ', '.join(C.SITE['address'][:2]), C.SITE['address'][2].split(',')[0]
+    data = {
+        '@context': 'https://schema.org', '@type': 'ProfessionalService', 'name': C.SITE['name'],
+        'description': C.SITE['tagline'], 'email': C.SITE['enquiry_email'],
+        'telephone': [t for _, t in C.SITE['phones']],
+        'address': {'@type': 'PostalAddress', 'streetAddress': street, 'addressLocality': city, 'addressCountry': 'SA'},
+        'areaServed': 'Saudi Arabia',
+    }
+    if SITE_URL:
+        data.update(url=f'{SITE_URL}/', logo=f'{SITE_URL}/assets/images/apple-touch-icon.png',
+                    image=f'{SITE_URL}/assets/images/og-image.png')
+    if C.SITE['social']:
+        data['sameAs'] = [u for _, u in C.SITE['social']]
+    text = json.dumps(data, ensure_ascii=False, indent=1).replace('</', '<\\/')
+    return f'<script type="application/ld+json">\n{text}\n</script>'
 
 
 PAGES = {}
@@ -369,14 +402,15 @@ def build_home():
         'operations in Saudi Arabia through integrated advisory, capital readiness, venture support and '
         'market-entry execution.',
         actions=button('contact.html', 'Discuss a project') + link_arrow('services.html', 'Explore services'),
-        extra=stats + logos(C.CLIENTS_GLOBAL, area=2600, max_w=120, cls='logos--strip'))
+        extra=stats)
 
     services = section(
         'Services', 'Built around the challenges [you need to solve.]',
         rows([dict(num=num(i + 1), title=a['label'], desc=a['short'], href=a['href']) for i, a in enumerate(AREAS)]),
         intro='Rather than separate disciplines, we join business direction, financial structure and '
               'implementation into one connected approach.',
-        footer=link_arrow('services.html', 'All services'))
+        footer='<div class="actions actions--tight">' + button('contact.html', 'Discuss a project')
+               + link_arrow('services.html', 'All services') + '</div>')
 
     steps = '<ol class="steps">' + ''.join(
         f'<li class="step"><span class="step__num">{num(i + 1)}</span><h3>{e(t)}</h3><p>{e(d)}</p></li>'
@@ -534,7 +568,9 @@ def build_about():
         '<div class="panel"><p class="eyebrow">International partner</p>'
         f'<p class="panel__title">{e(C.PARTNER["name"])}</p>'
         '<p>Tokyo, Japan. Manufacturing capability, continuous improvement and industrial consulting.</p>'
-        f'{link_arrow(C.PARTNER["url"], "Visit Hirayama Holdings", external=True)}</div>',
+        f'{link_arrow(C.PARTNER["url"], "Visit Hirayama Holdings", external=True)}</div>'
+        + (f'<h3 class="group-title group-title--logos">{e(C.PARTNER_CLIENTS_LABEL)}</h3>'
+           + logos(C.CLIENTS_GLOBAL, cls='logos--grid logos--compact') if C.SHOW_PARTNER_CLIENTS else ''),
         id='partnership')
 
     def avatar(name, photo):
@@ -628,17 +664,42 @@ def build_contact():
 
 
 def build_legal():
-    for slug, title, summary in [
-        ('privacy', 'Privacy Policy', 'How we handle enquiry data, and how to contact us about privacy.'),
-        ('terms', 'Terms & Conditions', 'The terms that apply to using this website.'),
-    ]:
-        url = C.SITE['legal'][slug]
-        body = page_hero('Legal', title, summary) + section(
-            'Current version', f'Read our {title}.',
-            f'<p class="body-lg">The current version of our {e(title)} is published on elevatearabia.com.</p>'
-            f'<div class="actions">{link_arrow(url, f"Open the {title}", external=True)}</div>'
-            f'<p class="small">Questions? Email <a href="mailto:{C.SITE["enquiry_email"]}">{C.SITE["enquiry_email"]}</a>.</p>')
-        page(slug, title, summary, body)
+    updated = f'<p class="legal-date">Last updated: {e(C.LEGAL_UPDATED)}</p>'
+    t = C.TERMS
+    terms = (page_hero('Legal', 'Terms & Conditions', 'The terms that apply to using this website.')
+             + section('Legal disclaimer', 'Disclaimer.', updated + ''.join(f'<p>{e(x)}</p>' for x in t['disclaimer']),
+                       id='disclaimer')
+             + section('Terms of use', 'Terms of use.',
+                       f'<p>{e(t["intro"])}</p><ol class="legal-clauses">' + ''.join(
+                           f'<li><h3>{e(h)}</h3><p>{e(x)}</p></li>' for h, x in t['clauses']) + '</ol>', id='terms'))
+    page('terms', 'Terms & Conditions', 'The terms that apply to using the Elevate Arabia website.', terms)
+
+    pr = C.PRIVACY
+    contact = f'<p>Questions or requests about your personal data: <a href="mailto:{pr["contact"]}">{pr["contact"]}</a>.</p>'
+    privacy = (page_hero('Legal', 'Privacy Policy', 'How we handle personal data, and how to contact us about it.')
+               + section('Privacy', 'Your personal data.',
+                         updated + ''.join(f'<p>{e(x)}</p>' for x in pr['paragraphs']) + contact + f'<p>{e(pr["changes"])}</p>'))
+    page('privacy', 'Privacy Policy', 'How Elevate Arabia handles personal data, and how to contact us about it.', privacy)
+
+
+def redirect_page(new):
+    target = f'{SITE_URL}/{new}' if SITE_URL else new
+    return f'''<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Page moved | {e(C.SITE["name"])}</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="{e(target)}">
+<meta http-equiv="refresh" content="0; url={e(new)}">
+<script>location.replace({json.dumps(new)} + location.hash)</script>
+</head>
+<body>
+<h1>This page has moved</h1>
+<p><a href="{e(new)}">Continue to the new page</a>.</p>
+</body>
+</html>
+'''
 
 
 def build_404():
@@ -654,9 +715,14 @@ class _Collector(HTMLParser):
     def __init__(self):
         super().__init__()
         self.ids, self.links, self.h1 = [], [], 0
+        self.empty_headings, self._heading, self._heading_text = 0, None, ''
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        if tag in ('h1', 'h2', 'h3', 'h4'):
+            self._heading, self._heading_text = tag, ''
+        if tag == 'img' and self._heading:
+            self._heading_text += a.get('alt') or ''
         if a.get('id'):
             self.ids.append(a['id'])
         if tag == 'h1':
@@ -665,17 +731,36 @@ class _Collector(HTMLParser):
             if a.get(k):
                 self.links.append(a[k])
 
+    def handle_data(self, data):
+        if self._heading:
+            self._heading_text += data
+
+    def handle_endtag(self, tag):
+        if tag == self._heading:
+            if not self._heading_text.strip():
+                self.empty_headings += 1
+            self._heading = None
+
+
+INVISIBLE = re.compile('[\u200b\u200c\u200d\u2060\ufeff]')
+
 
 def check(out):
     parsed = {}
     for p in out.glob('*.html'):
         c = _Collector()
-        c.feed(p.read_text(encoding='utf-8'))
+        text = p.read_text(encoding='utf-8')
+        c.feed(text)
+        c.invisible = len(INVISIBLE.findall(text))
         parsed[p.name] = c
     errors = []
     for name, c in parsed.items():
         if c.h1 != 1:
             errors.append(f'{name}: expected one <h1>, found {c.h1}')
+        if c.empty_headings:
+            errors.append(f'{name}: {c.empty_headings} empty heading(s)')
+        if c.invisible:
+            errors.append(f'{name}: {c.invisible} invisible character(s)')
         dupes = {i for i in c.ids if c.ids.count(i) > 1}
         if dupes:
             errors.append(f'{name}: duplicate ids {sorted(dupes)}')
@@ -712,6 +797,9 @@ def main():
 
     for name, html in PAGES.items():
         (OUT / name).write_text(html, encoding='utf-8')
+    for old, new in REDIRECTS.items():
+        assert f'{old}.html' not in PAGES, old
+        (OUT / f'{old}.html').write_text(redirect_page(new), encoding='utf-8')
 
     robots = 'User-agent: *\n' + ('Allow: /\n' if INDEXABLE else 'Disallow: /\n')
     if SITE_URL:
