@@ -17,6 +17,11 @@ SITE = dict(
     emails=['ceo@elevatearabia.com', 'os@elevatearabia.com'],
     phones=[('+966 53 333 7712', '+966533337712'), ('+966 56 221 1666', '+966562211666')],
     address=['7th Floor, Sultan Center', 'Madinah Road', 'Jeddah, Saudi Arabia'],
+    maps='https://www.google.com/maps/search/?api=1&query=Sultan+Center%2C+Madinah+Road%2C+Jeddah',
+    # Social profiles, shown in the footer and on the contact page once filled in.
+    # The live site has none: its icons point to Wix template accounts. Add the
+    # real URLs here, e.g. ('LinkedIn', 'https://www.linkedin.com/company/...').
+    social=[],
     legal=dict(
         privacy='https://www.elevatearabia.com/privacy-policy',
         terms='https://www.elevatearabia.com/terms-and-coniditions',
@@ -221,6 +226,32 @@ SECTORS = [
          link='market-entry.html', link_label='Market Entry'),
 ]
 
+PARTNER = dict(
+    name='Hirayama Holdings Co., Ltd.',
+    url='https://www.hirayamastaff.co.jp/en/',  # official site per its Tokyo Stock Exchange filings (code 7781)
+    photo='brand/elevate-hirayama-team.webp',
+    photo_alt='Elevate Arabia with the Hirayama Holdings team',
+)
+
+# Logos shown on the live homepage. Files: assets/images/clients/<slug>.webp
+# CLIENTS_NETWORK is the live "Clients / Network & Partners" strip.
+CLIENTS_NETWORK = [
+    ('blue-camel', 'Blue Camel'), ('cellular-therapeutics-center', 'Cellular Therapeutics Center'),
+    ('saudi-ai', 'Saudi AI'), ('saudi-nih', 'Saudi NIH'), ('igene', 'iGene'),
+    ('thuraya-healthcare', 'Thuraya Healthcare'), ('ilf', 'ILF'), ('al-bakri', 'Al Bakri'), ('neem', 'Neem'),
+    ('elevate-financial-express', 'Elevate Financial Express'), ('omixcube', 'OMIXCUBE'), ('skylight', 'Skylight'),
+    ('hijaz-green', 'Hijaz Green'), ('xgenome', 'XGenome Biotech Company'),
+]
+# CLIENTS_GLOBAL is the live logo ticker shown under the "1,500+ companies" claim.
+# CONFIRM these are Elevate's own clients (several match the partner's and team's
+# background) and that the trademarks may be displayed. See docs/REVIEW.md.
+CLIENTS_GLOBAL = [
+    ('toyota', 'Toyota'), ('siemens', 'Siemens'), ('samsung', 'Samsung'), ('hitachi', 'Hitachi'),
+    ('panasonic', 'Panasonic'), ('mercedes-benz', 'Mercedes-Benz'), ('mitsubishi-motors', 'Mitsubishi Motors'),
+    ('huawei', 'Huawei'), ('nippon-steel', 'Nippon Steel'), ('isuzu', 'Isuzu'), ('cimc', 'CIMC'),
+    ('johnson-johnson', 'Johnson & Johnson'),
+]
+
 VALUES = [
     ('Integrity & accountability', 'Respectful relationships and clear responsibility.'),
     ('Continuous improvement', 'An emphasis on Kaizen and practical operational learning.'),
@@ -230,36 +261,37 @@ VALUES = [
     ('Environment & safety', 'Responsible, safe and well-managed workplaces.'),
 ]
 
+# (name, role, photo slug in assets/images/team/ or None for initials)
 TEAM_SAUDI = [
-    ('Sheikh Hamza Albakry', 'Chairman & Co-Founder'),
-    ('Mohamed Chaudhry', 'CEO & Co-Founder'),
-    ('Osama Albakry', 'GM & Co-Founder'),
-    ('Eyad Albakry', 'Legal Counsel'),
-    ('Waddah Swar', 'Head of Eastern Province'),
-    ('Ibrahim AlBakry', 'CFO'),
-    ('Mohammed Batarfi', 'Financial Consultant'),
-    ('Mohammed Saqib Bashir', 'Automotive Industrial Consultant'),
-    ('Abdelrafea Fakher', 'Lean Management Specialist'),
-    ('Bahaa Mohammed', 'Administrative Manager'),
-    ('Rama Abdulnaser Hussain Charam', 'Strategic Analytics'),
+    ('Sheikh Hamza Albakry', 'Chairman & Co-Founder', 'hamza-albakry'),
+    ('Mohamed Chaudhry', 'CEO & Co-Founder', 'mohamed-chaudhry'),
+    ('Osama Albakry', 'GM & Co-Founder', 'osama-albakry'),
+    ('Eyad Albakry', 'Legal Counsel', 'eyad-albakry'),
+    ('Waddah Swar', 'Head of Eastern Province', 'waddah-swar'),
+    ('Ibrahim AlBakry', 'CFO', 'ibrahim-albakry'),
+    ('Mohammed Batarfi', 'Financial Consultant', 'mohammed-batarfi'),
+    ('Mohammed Saqib Bashir', 'Automotive Industrial Consultant', 'mohammed-saqib-bashir'),
+    ('Abdelrafea Fakher', 'Lean Management Specialist', 'abdelrafea-fakher'),
+    ('Bahaa Mohammed', 'Administrative Manager', 'bahaa-mohammed'),
+    ('Rama Abdulnaser Hussain Charam', 'Strategic Analytics', None),
 ]
 
 TEAM_INTERNATIONAL = [
-    ('Akihiro Ito', 'Process improvement consultant'),
-    ('Hiromitsu Hayashida', 'Former deputy plant manager, Toyota Tahara'),
-    ('Toshio Morishima', 'Former Denso plant manager'),
-    ('Kouichi Kakizawa', 'Expert specialist'),
-    ('Tadashi Mori', 'Former Toyota chief leader'),
-    ('Mitsuru Suzuki', 'Former Toyota production engineering leader'),
-    ('Tsutomu Orito', 'Toyota and DENSO TEN alumnus'),
-    ('Ishikawa Hisayoshi', 'Professional engineer'),
-    ('Tadamasa Ishigaki', 'Former Toyota chief leader'),
-    ('Toshio Takeuchi', 'Gemba Kaizen consultant'),
-    ('Kenichi Sawada', 'Sony alumnus'),
-    ('Maresuke Ishii', 'Kaizen and overseas expansion consultant'),
-    ('Shigeyuki Obara', 'RICOH production engineering'),
-    ('Miyuky Honda', 'Manager, Consulting Division'),
-    ('Kazuhiro Tsuchiya', 'Management consultant, doctorate in engineering'),
+    ('Akihiro Ito', 'Process improvement consultant', 'akihiro-ito'),
+    ('Hiromitsu Hayashida', 'Former deputy plant manager, Toyota Tahara', 'hiromitsu-hayashida'),
+    ('Toshio Morishima', 'Former Denso plant manager', 'toshio-morishima'),
+    ('Kouichi Kakizawa', 'Expert specialist', 'kouichi-kakizawa'),
+    ('Tadashi Mori', 'Former Toyota chief leader', 'tadashi-mori'),
+    ('Mitsuru Suzuki', 'Former Toyota production engineering leader', 'mitsuru-suzuki'),
+    ('Tsutomu Orito', 'Toyota and DENSO TEN alumnus', 'tsutomu-orito'),
+    ('Ishikawa Hisayoshi', 'Professional engineer', 'ishikawa-hisayoshi'),
+    ('Tadamasa Ishigaki', 'Former Toyota chief leader', 'tadamasa-ishigaki'),
+    ('Toshio Takeuchi', 'Gemba Kaizen consultant', 'toshio-takeuchi'),
+    ('Kenichi Sawada', 'Sony alumnus', 'kenichi-sawada'),
+    ('Maresuke Ishii', 'Kaizen and overseas expansion consultant', 'maresuke-ishii'),
+    ('Shigeyuki Obara', 'RICOH production engineering', 'shigeyuki-obara'),
+    ('Miyuky Honda', 'Manager, Consulting Division', 'miyuky-honda'),
+    ('Kazuhiro Tsuchiya', 'Management consultant, doctorate in engineering', 'kazuhiro-tsuchiya'),
 ]
 
 STEPS = [

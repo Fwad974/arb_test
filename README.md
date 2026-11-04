@@ -21,7 +21,8 @@ Open http://localhost:8000. Rebuild after each edit with `python3 build.py`.
 
 | What | Where |
 |---|---|
-| Copy: services, sectors, team, contact details | `content.py` |
+| Copy: services, sectors, team, contact details, social links, client logos | `content.py` |
+| Logos, team photos, brand files | `assets/images/` (WebP; drop in a file and reference its slug) |
 | Page templates and layout | `build.py` |
 | Styles and design tokens | `assets/css/styles.css` |
 | Mobile menu and contact form | `assets/js/app.js` |
@@ -75,12 +76,12 @@ Screenshots are written to `qa-output/`, which git ignores.
 | `--text` | `#2c3b49` | Body copy |
 | `--muted` | `#5a6977` | Secondary copy (5.6:1) |
 | `--tone` | `#7a8793` | Second tone in large headlines only |
-| `--accent` | `#bd3f43` | Brand mark, markers, focus ring |
+| `--accent` | `#c00200` | Brand red (sampled from the logo): buttons, numbers, markers, focus ring |
 | `--line` | `#e3e7ea` | Hairline dividers |
 | `--soft` | `#f5f7f8` | Panels, footer |
 
 The layout uses a 1120px max width and two-column sections (heading left, content right),
-stacking to one column below 900px. Red stays as an accent, never a fill.
+stacking to one column below 900px. Red is used sparingly: primary buttons, numbering and small markers.
 
 ## Contact form
 

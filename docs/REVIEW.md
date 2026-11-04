@@ -51,6 +51,9 @@ https://www.elevatearabia.com/ (fetched 4 November 2026), and what changed.
 ## 4. Issues seen on the live site (outside this repo)
 
 - The footer email link points to `info@mysite.com` and the phone link to `tel:123-456-7890`, both template placeholders. The visible text is correct, but clicking either does the wrong thing.
+- There are no real social profiles. The menu's social icons link to Wix's own accounts (`instagram.com/wix`, `linkedin.com/company/wix-com`, and so on), and the footer's "LinkedIn · Facebook · Instagram · X" are plain text with no links.
+- The Hirayama Holdings link is a Google search URL. The official site, per its Tokyo Stock Exchange filings, is https://www.hirayamastaff.co.jp/.
+- Images are served at full size: one wordmark is 7167×1562px and the logo and team files total about 72 MB. This repo ships the same images at about 0.8 MB.
 - Typos: "Why Advisory Often Fail", "Cearer direction", "eveyone".
 - `/services` returns 404; the services page is at `/home-1`.
 
@@ -59,6 +62,10 @@ https://www.elevatearabia.com/ (fetched 4 November 2026), and what changed.
 - **1,500+ companies.** This is the company's own claim on its live site. Keep the evidence on file.
 - **"Up to 40% faster"** is attributed to Quadratech in the FAQ. Confirm the wording and the rights to use the Quadratech, Quadraframe and Quadracrete names.
 - **Team.** Confirm names, roles and permission to publish them.
-- **Partnership.** Confirm the Hirayama Holdings wording.
+- **Partnership.** Confirm the Hirayama Holdings wording and photo caption.
+- **Global logo strip** (Toyota, Siemens, Samsung and others, under the 1,500+ stat). It mirrors the live site, but several of these match the Japanese partner's and team's background. Confirm they are Elevate's own clients and that the trademarks may be displayed, or remove them from `CLIENTS_GLOBAL` in `content.py`.
+- **Network & partners logos.** Confirm the names used as alt text, especially "Al Bakri" (read from the Arabic logo).
+- **Social profiles.** Add the real URLs to `SITE.social` in `content.py`; nothing is shown until you do.
+- **Team photos.** Rama Abdulnaser Hussain Charam has no photo on the live site, so initials are shown.
 - **Legal pages** currently link to elevatearabia.com. If this site replaces that domain, migrate the policy text first, or those links will point to pages that no longer exist.
 - **Enquiries** go to `ceo@elevatearabia.com` (`SITE.enquiry_email` in `content.py`). Confirm that is the right inbox. If a server-side form is added later, update the privacy policy.
