@@ -304,8 +304,8 @@ STEPS = [
 # to the partner (see SHOW_PARTNER_CLIENTS above).
 STATS = [
     (str(sum(len(s.get('areas') or [s]) for s in SERVICES)), 'service areas, from strategy to market entry'),
+    (str(len(SECTORS)), 'focus sectors, from life sciences to national development'),
     (str(len(TEAM_SAUDI) + len(TEAM_INTERNATIONAL)), 'team members in Saudi Arabia and Japan'),
-    ('Hirayama Holdings', 'our strategic international partner, Japan'),
 ]
 
 # ---------------------------------------------------------------------------

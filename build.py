@@ -134,17 +134,13 @@ def img(rel, alt, height=None, cls='', lazy=True):
     return f'<img src="{asset("images/" + rel)}" alt="{e(alt)}" width="{w}" height="{h}"{attrs}>'
 
 
-def logos(items, area=4200, max_w=150, cls=''):
-    """Logo grid. width/height give each logo's proportions; CSS sets the shared height."""
+def logos(items, cls=''):
+    """Logo grid. Files are monochrome ink on one 360x160 canvas (scripts/prepare_logos.py)."""
     out = []
     for slug, name in items:
-        w, h = image_size(f'clients/{slug}.webp')
-        ratio = w / h
-        dh = max(26, min(60, round((area / ratio) ** 0.5)))
-        dw = round(dh * ratio)
-        if dw > max_w:
-            dw, dh = max_w, round(max_w / ratio)
-        out.append(f'<li><img src="{asset(f"images/clients/{slug}.webp")}" alt="{e(name)}" width="{dw}" height="{dh}" '
+        if image_size(f'clients/{slug}.webp') != (360, 160):
+            raise ValueError(f'clients/{slug}.webp is not 360x160; prepare it with scripts/prepare_logos.py')
+        out.append(f'<li><img src="{asset(f"images/clients/{slug}.webp")}" alt="{e(name)}" width="180" height="80" '
                    f'loading="lazy" decoding="async"></li>')
     return f'<ul class="logos {cls}">' + ''.join(out) + '</ul>'
 
@@ -219,22 +215,24 @@ def page_hero(eyebrow, title, lead, actions='', crumbs=None, extra=''):
 </section>'''
 
 
-def rows(items):
-    """Hairline list. item = dict(title, desc, href=None, num=None, meta=None, extra=None)."""
+def rows(items, compact=False):
+    """Hairline list. item = dict(title, desc, href=None, num=None, meta=None, extra=None).
+    compact=True shows titles only, in two columns from tablet width up."""
     out = []
     for it in items:
         num_html = f'<span class="row__num">{e(it["num"])}</span>' if it.get('num') else ''
         kicker = f'<span class="row__kicker">{e(it["meta"])}</span>' if it.get('meta') else ''
         extra = it.get('extra', '')
+        desc = '' if compact else f'<span class="row__desc">{e(it["desc"])}</span>'
         inner = (f'{num_html}<span class="row__main">{kicker}<span class="row__title">{e(it["title"])}</span>'
-                 f'<span class="row__desc">{e(it["desc"])}</span>{extra}</span>')
+                 f'{desc}{extra}</span>')
         if it.get('href'):
             out.append(f'<li class="row"><a class="row__link" href="{e(it["href"])}">{inner}'
                        f'{icon("arrow", "icon row__arrow")}</a></li>')
         else:
             id_attr = f' id="{it["id"]}"' if it.get('id') else ''
             out.append(f'<li class="row"{id_attr}><div class="row__link row__link--static">{inner}</div></li>')
-    cls = 'rows' + (' rows--numbered' if any(i.get('num') for i in items) else '')
+    cls = 'rows' + (' rows--numbered' if any(i.get('num') for i in items) else '') + (' rows--compact' if compact else '')
     return f'<ul class="{cls}">' + ''.join(out) + '</ul>'
 
 
@@ -334,7 +332,7 @@ def layout(slug, title, description, body):
         head_extra.append('<meta name="robots" content="noindex">')
     if slug == 'index' and C is EN:
         head_extra.append(organization_jsonld())
-    font = 'ibm-plex-sans-arabic-arabic' if lang['code'] == 'ar' else 'ibm-plex-sans-latin'
+    font = 'readex-pro-arabic' if lang['code'] == 'ar' else 'ibm-plex-sans-latin'
     preloads = ''.join(f'<link rel="preload" href="{asset(f"fonts/{font}-{w}.woff2")}" as="font" type="font/woff2" crossorigin>\n'
                        for w in (400, 600))
 
@@ -353,7 +351,9 @@ def layout(slug, title, description, body):
 {base}<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(full_title)}</title>
 <meta name="description" content="{e(description)}">
-<meta name="theme-color" content="#ffffff">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1622" media="(prefers-color-scheme: dark)">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{e(C.SITE["name"])}">
 <meta property="og:title" content="{e(full_title)}">
@@ -369,7 +369,8 @@ def layout(slug, title, description, body):
 <a class="skip-link" href="#main">{e(t("skip"))}</a>
 <header class="site-header">
   <div class="wrap site-header__inner">
-    <a class="brand" href="index.html">{img(BRAND_DARK, t("home_alt"), height=26, lazy=False)}</a>
+    <a class="brand" href="index.html"><picture><source srcset="{asset("images/" + BRAND)}" media="(prefers-color-scheme: dark)">{img(BRAND_DARK, t("home_alt"), height=26, lazy=False)}</picture></a>
+    {lang_switch.replace('class="lang-switch"', 'class="lang-switch lang-switch--header"')}
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="{e(t("menu_open"))}" data-label-open="{e(t("menu_open"))}" data-label-close="{e(t("menu_close"))}">{icon("menu", "icon")}{icon("close", "icon")}</button>
     <nav class="site-nav" id="site-nav" aria-label="{e(t("nav_label"))}">
       {nav}
@@ -474,13 +475,13 @@ def build_home():
         </div>''',
         footer=link_arrow('about.html', t('about_link')))
 
-    network = section_wide(t('clients_eyebrow'), t('clients_heading'), logos(C.CLIENTS_NETWORK, cls='logos--grid'),
+    network = section_wide(t('clients_eyebrow'), t('clients_heading'), logos(C.CLIENTS_NETWORK),
                            intro=t('clients_intro'), id='clients')
 
     sectors = section(
         t('sectors_eyebrow'), t('sectors_heading'),
         rows([dict(num=num(i + 1), title=s['label'], desc=s['desc'], href=f'sectors.html#{s["slug"]}')
-              for i, s in enumerate(C.SECTORS)]),
+              for i, s in enumerate(C.SECTORS)], compact=True),
         intro=t('sectors_intro'), footer=link_arrow('sectors.html', t('all_sectors')))
 
     body = hero + services + approach + who + network + sectors + cta(
@@ -577,7 +578,7 @@ def build_about():
         f'<p>{e(t("partner_location"))}</p>'
         f'{link_arrow(C.PARTNER["url"], t("visit_partner"), external=True)}</div>'
         + (f'<h3 class="group-title group-title--logos">{e(C.PARTNER_CLIENTS_LABEL)}</h3>'
-           + logos(C.CLIENTS_GLOBAL, cls='logos--grid') if C.SHOW_PARTNER_CLIENTS else ''),
+           + logos(C.CLIENTS_GLOBAL) if C.SHOW_PARTNER_CLIENTS else ''),
         id='partnership')
 
     def avatar(name, photo):
@@ -762,6 +763,9 @@ class _Collector(HTMLParser):
         for k in ('href', 'src'):
             if a.get(k):
                 self.links.append(a[k])
+        for candidate in (a.get('srcset') or '').split(','):
+            if candidate.strip():
+                self.links.append(candidate.split()[0])
 
     def handle_data(self, data):
         if self._heading:

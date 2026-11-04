@@ -6,6 +6,8 @@
  *   node scripts/qa.cjs              checks only
  *   node scripts/qa.cjs --shots      checks + screenshots in ./qa-output
  *
+ * Every layout, error and contrast check runs in light AND dark mode, and the
+ * page must look identical with the browser's forced dark mode switched on.
  * Checks: horizontal overflow at 7 widths (320-2560px), JS errors, AA text
  * contrast, headline on the first screen, mobile menu, anchors clearing the
  * sticky header, contact form behaviour, redirects from old addresses, no
@@ -45,15 +47,15 @@ function serve() {
   const fail = (msg) => failures.push(msg);
   if (SHOTS) fs.mkdirSync(OUT, { recursive: true });
 
-  // 1. Layout + errors + contrast across widths
-  for (const width of [320, 375, 768, 1024, 1280, 1440, 2560]) {
-    const page = await browser.newPage({ viewport: { width, height: 900 } });
+  // 1. Layout + errors + contrast across widths, in both colour schemes
+  for (const scheme of ['light', 'dark']) for (const width of [320, 375, 768, 1024, 1280, 1440, 2560]) {
+    const page = await browser.newPage({ viewport: { width, height: 900 }, colorScheme: scheme });
     page.on('pageerror', (err) => fail(`JS error @${width}: ${err.message}`));
     page.on('console', (msg) => { if (msg.type() === 'error') fail(`console error @${width}: ${msg.text()}`); });
     for (const name of pages) {
       await page.goto(base + name);
       const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
-      if (scroll > width) fail(`${name} @${width}px: horizontal overflow (${scroll}px)`);
+      if (scroll > width) fail(`${name} @${width}px ${scheme}: horizontal overflow (${scroll}px)`);
       if (width === 1280) {
         const text = await page.evaluate(() => document.body.innerText);
         for (const note of ['Saudi official website', 'SDAIA states', 'The PDPL is the principal']) if (text.includes(note)) fail(`${name}: leftover research note "${note}"`);
@@ -96,10 +98,10 @@ function serve() {
           }
           return bad;
         });
-        low.forEach((b) => fail(`${name} @${width}px: low contrast ${b}`));
+        low.forEach((b) => fail(`${name} @${width}px ${scheme}: low contrast ${b}`));
       }
     }
-    if (SHOTS && (width === 375 || width === 1440)) {
+    if (SHOTS && scheme === 'light' && (width === 375 || width === 1440)) {
       for (const name of ['index.html', 'services.html', 'advisory.html', 'about.html', 'contact.html', 'ar/index.html', 'ar/about.html', 'ar/contact.html']) {
         await page.goto(base + name);
         await page.screenshot({ path: path.join(OUT, `${name.replace('.html', '').replace('/', '-')}-${width}.png`), fullPage: true });
@@ -107,6 +109,22 @@ function serve() {
     }
     await page.close();
   }
+
+  // 1b. Forced dark mode (Chrome/Samsung "darken websites") must not repaint the page:
+  //     with color-scheme declared, it should render exactly like our own dark theme.
+  const forced = await chromium.launch({ args: ['--blink-settings=forceDarkModeEnabled=true'] });
+  for (const name of ['index.html', 'ar/index.html', 'about.html', 'contact.html']) {
+    const shots = [];
+    for (const b of [browser, forced]) {
+      const p = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
+      await p.goto(base + name);
+      await p.evaluate(async () => { await document.fonts.ready; });
+      shots.push(await p.screenshot({ animations: 'disabled' }));
+      await p.close();
+    }
+    if (!shots[0].equals(shots[1])) fail(`${name}: forced dark mode changes the page (browser is repainting it)`);
+  }
+  await forced.close();
 
   // 2. Headline, intro and main button on the first screen (laptop) / headline (phone)
   for (const [w, h, sel, home] of [[1280, 720, '.hero .button', 'index.html'], [1366, 768, '.hero .button', 'index.html'],
@@ -211,5 +229,5 @@ function serve() {
   await browser.close();
   server.close();
   if (failures.length) { console.error(`QA FAILED (${failures.length})\n  ` + failures.join('\n  ')); process.exit(1); }
-  console.log(`QA passed: ${pages.length} pages (English + Arabic) x 7 widths, contrast, first screen, menu, anchors, forms, language switch, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
+  console.log(`QA passed: ${pages.length} pages (English + Arabic) x 7 widths x light/dark, contrast, forced dark, first screen, menu, anchors, forms, language switch, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
 })();

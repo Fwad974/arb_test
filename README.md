@@ -20,7 +20,7 @@ and every page has a language switch and `hreflang` tags.
   numbers) from `content.py` and supplies only the text, matched by slug or name.
 - If you add a service, sector, team member or `UI` string in English, add its Arabic text
   too. The build stops with an error that names whatever is missing.
-- Arabic pages are right-to-left (`dir="rtl"`) and use IBM Plex Sans Arabic. Layout CSS uses
+- Arabic pages are right-to-left (`dir="rtl"`) and use Readex Pro. Layout CSS uses
   logical properties, so it mirrors automatically, and arrows flip in Arabic.
 
 The Arabic translation needs a native-speaker review before launch.
@@ -41,7 +41,8 @@ Open http://localhost:8000. Rebuild after each edit with `python3 build.py`.
 |---|---|
 | English copy: services, sectors, team, contact details, social links, client logos, legal text, interface text | `content.py` |
 | Arabic copy (same structure, text only) | `content_ar.py` |
-| Logos, team photos, brand files | `assets/images/` (WebP; drop in a file and reference its slug) |
+| Logos, team photos, brand files | `assets/images/` (WebP) |
+| Preparing a new client logo | `scripts/prepare_logos.py` (needs Pillow and NumPy, see below) |
 | Page templates and layout | `build.py` |
 | Styles and design tokens | `assets/css/styles.css` |
 | Mobile menu and contact form | `assets/js/app.js` |
@@ -85,9 +86,29 @@ Old Wix addresses (`/home-1`, `/blank`, `/blank-1` … `/blank-5`, `/terms-and-c
 GitHub Pages cannot send true 301 redirects; these are instant redirects with a canonical tag.
 For real 301s, put a CDN such as Cloudflare in front of Pages and add the same rules there.
 
+## Client logos
+
+Logos are shown as one monochrome set: grey in light mode, inverted in dark mode. Every file
+is black ink on a transparent 360×160 canvas, so all logos share one size and visual weight.
+To add or replace one, save the original as `<slug>.png` (any size, white or transparent
+background) in a folder, then run:
+
+```bash
+pip install pillow numpy
+```
+
+```bash
+python3 scripts/prepare_logos.py path/to/originals assets/images/clients
+```
+
+Add `('slug', 'Company name')` to `CLIENTS_NETWORK` in `content.py`. The build checks that every
+logo is the right size.
+
 ## Browser QA (optional)
 
-Checks every page at 7 widths (320–2560px) for overflow, JS errors and WCAG AA text contrast.
+Checks every page at 7 widths (320–2560px), in light and dark mode, for overflow, JS errors
+and WCAG AA text contrast. It also confirms that forced dark mode (the "darken websites"
+setting on Android browsers) leaves the page exactly as designed.
 It covers both languages, and also checks that the headline and main button are on the first screen of a 1280×720 laptop,
 and tests the mobile menu, anchor offsets under the sticky header, contact form validation, the
 mailto output, the old-address redirects, that no cookies are set, that no research notes
@@ -107,7 +128,9 @@ Screenshots are written to `qa-output/`, which git ignores.
 ## Design
 
 Palette from the website review: mostly white and sand, navy for the footer and one highlight
-panel per page, and one red as an accent only.
+panel per page, and one red as an accent only. A matching dark theme follows the visitor's
+system setting. Every colour is a token in `styles.css` with a light and a dark value, and
+`color-scheme: light dark` stops browsers from repainting the page with their own dark mode.
 
 | Token | Value | Use |
 |---|---|---|
@@ -119,12 +142,12 @@ panel per page, and one red as an accent only.
 | `--accent` | `#c00000` | The one red: buttons, numbering, small markers. Never a background. |
 | `--line` | `#e6e2da` | Hairline dividers |
 
-- **Type:** IBM Plex Sans and IBM Plex Sans Arabic (400/500/600, self-hosted in `assets/fonts/`,
-  SIL Open Font License), with one type scale on every page. The Arabic font loads only on pages
-  that contain Arabic text.
-- **Logo:** the original beige wordmark on the navy footer, and a navy variant
-  (`elevate-wordmark-dark.webp`) on the white header, because beige on white is only 2.4:1.
-  Confirm the navy variant with the brand owner.
+- **Type:** IBM Plex Sans for English and Readex Pro for Arabic (400/500/600, self-hosted in
+  `assets/fonts/`, SIL Open Font License), with one type scale on every page. Readex Pro was
+  chosen from eight Arabic typefaces (see `docs/ui-audit.md`) and loads only where Arabic text appears.
+- **Logo:** the original beige wordmark on dark backgrounds (the footer, and the header in dark
+  mode), and a navy variant (`elevate-wordmark-dark.webp`) on the white header, because beige on
+  white is only 2.4:1. Confirm the navy variant with the brand owner.
 - **Layout:** 1120px max width and two-column sections (heading left, content right),
   stacking to one column below 900px.
 
