@@ -8,8 +8,8 @@
  *
  * Every layout, error and contrast check runs in light AND dark mode, and the
  * page must look identical with the browser's forced dark mode switched on.
- * Checks: horizontal overflow at 7 widths (320-2560px), JS errors, AA text
- * contrast, headline on the first screen, mobile menu, anchors clearing the
+ * Checks: horizontal overflow at 8 widths (320-2560px), JS errors, AA text
+ * contrast, headline on the first screen, large screens using their width, mobile menu, anchors clearing the
  * sticky header, contact form behaviour, redirects from old addresses, no
  * cookies, no leftover research notes in the legal text, and for the translated
  * sites (/ar/, /zh/, /ja/): lang/dir, untranslated text, the language menu and the forms.
@@ -54,7 +54,7 @@ function serve() {
   if (SHOTS) fs.mkdirSync(OUT, { recursive: true });
 
   // 1. Layout + errors + contrast across widths, in both colour schemes
-  for (const scheme of ['light', 'dark']) for (const width of [320, 375, 768, 1024, 1280, 1440, 2560]) {
+  for (const scheme of ['light', 'dark']) for (const width of [320, 375, 768, 1024, 1280, 1440, 1920, 2560]) {
     const page = await browser.newPage({ viewport: { width, height: 900 }, colorScheme: scheme });
     page.on('pageerror', (err) => fail(`JS error @${width}: ${err.message}`));
     page.on('console', (msg) => { if (msg.type() === 'error') fail(`console error @${width}: ${msg.text()}`); });
@@ -144,6 +144,27 @@ function serve() {
     await p.evaluate(() => document.fonts.ready);
     const bottom = await p.evaluate((s) => document.querySelector(s).getBoundingClientRect().bottom, sel);
     if (bottom > h) fail(`${home} @${w}x${h}: "${sel}" below the first screen (${Math.round(bottom)}px)`);
+    await p.close();
+  }
+
+  // 2b. Large screens use their width: the type scale grows, the content fills most of the
+  //     screen, and the hero puts its intro (or the home page's stats) beside the headline.
+  for (const [w, h] of [[1920, 1080], [2560, 1440]]) {
+    const p = await browser.newPage({ viewport: { width: w, height: h } });
+    for (const dir of ['', 'ar/', 'zh/', 'ja/']) for (const file of ['index.html', 'about.html', 'advisory.html', 'contact.html']) {
+      const name = dir + file;
+      await p.goto(base + name);
+      await p.evaluate(() => document.fonts.ready);
+      const m = await p.evaluate(() => {
+        const box = (s) => { const el = document.querySelector(s); return el && el.getBoundingClientRect(); };
+        const h1 = box('.hero h1'), beside = box('.hero--home .stats') || box('.hero__side');
+        return { root: parseFloat(getComputedStyle(document.documentElement).fontSize), content: box('main .section .wrap').width,
+          beside: !!beside && beside.top < h1.bottom };
+      });
+      if (m.root <= 16) fail(`${name} @${w}px: text does not scale up (root ${m.root}px)`);
+      if (m.content < w * 0.55) fail(`${name} @${w}px: content only ${Math.round(m.content / w * 100)}% of the screen`);
+      if (!m.beside) fail(`${name} @${w}px: hero intro is not beside the headline`);
+    }
     await p.close();
   }
 
@@ -286,5 +307,5 @@ function serve() {
   await browser.close();
   server.close();
   if (failures.length) { console.error(`QA FAILED (${failures.length})\n  ` + failures.join('\n  ')); process.exit(1); }
-  console.log(`QA passed: ${pages.length} pages (English, Arabic, Chinese, Japanese) x 7 widths x light/dark, contrast, forced dark, first screen, menus, anchors, forms, language menu, messaging, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
+  console.log(`QA passed: ${pages.length} pages (English, Arabic, Chinese, Japanese) x 8 widths x light/dark, contrast, forced dark, first screen, large screens, menus, anchors, forms, language menu, messaging, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
 })();

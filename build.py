@@ -270,7 +270,9 @@ def section_wide(eyebrow, heading, body, intro='', id=None):
 </section>'''
 
 
-def page_hero(eyebrow, title, lead, actions='', crumbs=None, extra=''):
+def page_hero(eyebrow, title, lead, actions='', crumbs=None, extra='', cls=''):
+    """Page header. On wide screens (see .hero in styles.css) the intro and actions sit
+    beside the headline instead of below it, so the first screen uses its full width."""
     crumbs_html = ''
     if crumbs:
         items = ''.join(f'<li><a href="{e(h)}">{e(x)}</a></li>' for x, h in crumbs[:-1])
@@ -278,13 +280,17 @@ def page_hero(eyebrow, title, lead, actions='', crumbs=None, extra=''):
         crumbs_html = f'<nav class="breadcrumb" aria-label="{e(t("breadcrumb_label"))}"><ol>{items}</ol></nav>'
     actions_html = f'<div class="actions">{actions}</div>' if actions else ''
     return f'''
-<section class="hero">
+<section class="hero{' ' + cls if cls else ''}">
   <div class="wrap">
     {crumbs_html}
-    <p class="eyebrow">{e(eyebrow)}</p>
-    <h1>{hl(title)}</h1>
-    <p class="lead">{e(lead)}</p>
-    {actions_html}
+    <div class="hero__main">
+      <p class="eyebrow">{e(eyebrow)}</p>
+      <h1>{hl(title)}</h1>
+    </div>
+    <div class="hero__side">
+      <p class="lead">{e(lead)}</p>
+      {actions_html}
+    </div>
     {extra}
   </div>
 </section>'''
@@ -544,7 +550,7 @@ def build_home():
     hero = page_hero(
         t('hero_eyebrow'), t('hero_title'), t('hero_lead'),
         actions=button('contact.html', t('cta_discuss')) + link_arrow('services.html', t('explore_services')),
-        extra=stats)
+        extra=stats, cls='hero--home')
 
     services = section(
         t('services_eyebrow'), t('services_heading'),
@@ -689,7 +695,8 @@ def build_about():
             f'<span class="people__role">{e(r)}</span></span></li>'
             for n, r, ph in arr) + '</ul>'
 
-    team = section(
+    # Full width, so the 26 people fill rows across the page instead of one long column.
+    team = section_wide(
         t('team_eyebrow'), t('team_heading'),
         f'<h3 class="group-title">{e(t("team_saudi"))} <span>{len(C.TEAM_SAUDI)}</span></h3>{people(C.TEAM_SAUDI)}'
         f'<h3 class="group-title">{e(t("team_international"))} <span>{len(C.TEAM_INTERNATIONAL)}</span></h3>{people(C.TEAM_INTERNATIONAL)}',
@@ -797,10 +804,10 @@ def build_legal():
 
 
 def build_404():
-    """One 404 page at the site root (GitHub Pages serves only that one), in both languages."""
-    others = ''.join(
+    """One 404 page at the site root (GitHub Pages serves only that one), with a note in every language."""
+    others = '<div class="nf-alts">' + ''.join(
         f'<p class="nf-alt" lang="{m.LANG["code"]}" dir="{m.LANG["dir"]}">{e(m.UI["nf_title"])} {e(m.UI["nf_lead"])} '
-        f'<a href="{m.LANG["path"]}index.html">{e(m.UI["nf_home"])}</a></p>' for m in LANGS if m is not EN)
+        f'<a href="{m.LANG["path"]}index.html">{e(m.UI["nf_home"])}</a></p>' for m in LANGS if m is not EN) + '</div>'
     body = page_hero(t('nf_eyebrow'), t('nf_title'), t('nf_lead'),
                      actions=button('index.html', t('nf_home')) + link_arrow('contact.html', t('nf_contact')),
                      extra=others)
