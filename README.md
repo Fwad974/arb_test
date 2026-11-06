@@ -134,8 +134,9 @@ pip install pillow numpy
 python3 scripts/prepare_logos.py path/to/originals assets/images/clients
 ```
 
-Add `('slug', 'Company name')` to `CLIENTS_NETWORK` in `content.py`. The build checks that every
-logo is the right size.
+Add `('slug', 'Company name')` to `CLIENTS_NETWORK` in `content.py`, or
+`('slug', 'Company name', 'https://example.com/')` to make the logo link to the company's
+website (it opens in a new tab). The build checks that every logo is the right size.
 
 ## Browser QA (optional)
 

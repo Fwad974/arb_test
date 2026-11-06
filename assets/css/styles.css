@@ -388,7 +388,8 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 .logos { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px 16px; margin: 0; padding: 0; list-style: none; }
 .logos li { flex: 0 0 calc((100% - 6 * 16px) / 7); display: flex; justify-content: center; }
 .logos img { width: 100%; max-width: 180px; height: auto; filter: var(--logo-filter); opacity: var(--logo-opacity); transition: opacity var(--ease); }
-.logos li:hover img { opacity: 1; }
+.logos li:hover img, .logos a:focus-visible img { opacity: 1; }
+.logos a { display: flex; justify-content: center; width: 100%; border-radius: 8px; }
 .split__body .logos li { flex-basis: calc((100% - 3 * 16px) / 4); }
 .group-title--logos { margin-top: 48px; }
 

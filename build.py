@@ -203,13 +203,20 @@ def img(rel, alt, height=None, cls='', lazy=True):
 
 
 def logos(items, cls=''):
-    """Logo grid. Files are monochrome ink on one 360x160 canvas (scripts/prepare_logos.py)."""
+    """Logo grid. Files are monochrome ink on one 360x160 canvas (scripts/prepare_logos.py).
+    Each item is (slug, name) or (slug, name, website); a website makes the logo a link."""
     out = []
-    for slug, name in items:
+    for slug, name, *rest in items:
         if image_size(f'clients/{slug}.webp') != (360, 160):
             raise ValueError(f'clients/{slug}.webp is not 360x160; prepare it with scripts/prepare_logos.py')
-        out.append(f'<li><img src="{asset(f"images/clients/{slug}.webp")}" alt="{e(name)}" width="180" height="80" '
-                   f'loading="lazy" decoding="async"></li>')
+        logo = (f'<img src="{asset(f"images/clients/{slug}.webp")}" alt="{e(name)}" width="180" height="80" '
+                f'loading="lazy" decoding="async">')
+        if rest and rest[0]:
+            if not rest[0].startswith('https://'):
+                raise ValueError(f'{slug}: logo link must start with https://')
+            logo = (f'<a href="{e(rest[0])}" target="_blank" rel="noopener">{logo}'
+                    f'<span class="visually-hidden">{e(t("new_tab"))}</span></a>')
+        out.append(f'<li>{logo}</li>')
     return f'<ul class="logos {cls}">' + ''.join(out) + '</ul>'
 
 

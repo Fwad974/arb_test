@@ -232,6 +232,8 @@ PARTNER = dict(
 # Logos shown on the live homepage. Files: assets/images/clients/<slug>.webp
 # CLIENTS_NETWORK is the live "Clients / Network & Partners" strip.
 CLIENTS_NETWORK = [
+    # An optional third value links the logo to the company's website.
+    ('flopexa', 'Flopexa', 'https://www.flopexa.com/'),
     ('blue-camel', 'Blue Camel'), ('cellular-therapeutics-center', 'Cellular Therapeutics Center'),
     ('saudi-ai', 'Saudi AI'), ('saudi-nih', 'Saudi NIH'), ('fsgene', 'FSGene'),
     ('thuraya-healthcare', 'Thuraya Healthcare'), ('ilf', 'ILF'), ('al-bakri', 'Al Bakri'), ('neem', 'Neem'),
