@@ -76,3 +76,36 @@ to the latest build unless noted.
 All nine steps are done. `scripts/qa.cjs` passes on all 29 pages (English and Arabic), at 7
 widths, in light and dark mode. With forced dark mode switched on, the page now renders
 pixel-identical to the built-in dark theme; before this change, the browser repainted it.
+
+## Follow-up: large screens (November 2026)
+
+**Critique.** On large monitors the site looked like a small column in a lot of white. Every
+size was a fixed pixel value, so text stayed at 17px and the content at 1120px whatever the
+screen. On a 2560px screen that is 44% of the width, the headline ended at 58% of it, and the
+team list was one long two-column strip. Fixed pixel sizes also ignored the visitor's own
+browser text-size setting.
+
+**Fix.**
+
+- Every length is now in `rem`, converted losslessly and checked pixel-identical at the old size.
+- The root size grows smoothly: 16px up to 1280px wide, 18px at 1920px, 20px at 2560px, and
+  at most 22px. It starts from the browser's text size, so a visitor's setting scales the
+  whole site.
+- Content width is 76rem: about 1520px, or 59% of a 2560px screen. Section spacing is tighter.
+- From 1100px wide, page headers put the intro and actions beside the headline. From 1200px
+  the home page puts its three figures there instead, where its longer headline still fits
+  on three lines.
+- The team section spans the full width, so 26 people fill four columns instead of a 13-row
+  strip. The 404 page's notes in other languages sit in three columns.
+
+**Measured on the home page:**
+
+| Screen | Before: content, body text | After: content, body text |
+|---|---|---|
+| 1440px | 1120px (78%), 17px | 1254px (87%), 17.5px |
+| 1920px | 1120px (58%), 17px | 1368px (71%), 19px |
+| 2560px | 1120px (44%), 17px | 1520px (59%), 21px |
+
+Phones are unchanged. `scripts/qa.cjs` now also fails if, at 1920px or 2560px, the text does
+not scale up, the content covers less than 55% of the screen, or the hero intro falls below the
+headline. It checks this in all four languages.

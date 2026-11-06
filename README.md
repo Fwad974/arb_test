@@ -140,10 +140,11 @@ website (it opens in a new tab). The build checks that every logo is the right s
 
 ## Browser QA (optional)
 
-Checks every page at 7 widths (320–2560px), in light and dark mode, for overflow, JS errors
+Checks every page at 8 widths (320–2560px), in light and dark mode, for overflow, JS errors
 and WCAG AA text contrast. It also confirms that forced dark mode (the "darken websites"
 setting on Android browsers) leaves the page exactly as designed.
 It covers all four languages, and also checks that the headline and main button are on the first screen of a 1280×720 laptop,
+that 1920px and 2560px screens get larger text, content across most of the width and the intro beside the headline,
 and tests the mobile menu, anchor offsets under the sticky header, contact form validation, the
 mailto output, the old-address redirects, that no cookies are set, that no research notes
 remain in the legal text, and the 404 page. On the translated sites it also checks `lang`/`dir`,
@@ -182,8 +183,15 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
 - **Logo:** the original beige wordmark on dark backgrounds (the footer, and the header in dark
   mode), and a navy variant (`elevate-wordmark-dark.webp`) on the white header, because beige on
   white is only 2.4:1. Confirm the navy variant with the brand owner.
-- **Layout:** 1120px max width and two-column sections (heading left, content right),
-  stacking to one column below 900px.
+- **Scale:** every size is in `rem`, and the root text size grows with the screen: 16px up to
+  1280px wide, 18px at 1920px, 20px at 2560px, and at most 22px. Type, spacing, icons, logos and
+  the content width all grow together, so a large monitor shows the same composition at a
+  readable size instead of a small column in a sea of white. The scale starts from the
+  visitor's own browser text size, so a larger default text setting makes the whole site larger.
+- **Layout:** 76rem max width (1216px on a laptop, about 1520px on a 2560px screen) and
+  two-column sections (heading on the start side, content on the end side), stacking to one
+  column below 900px. From 1100px wide, page headers put the intro beside the headline, and
+  from 1200px the home page puts its three figures beside it. The team list fills four columns.
 
 ## Contact form
 
