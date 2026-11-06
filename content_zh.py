@@ -1,0 +1,313 @@
+"""Simplified Chinese (Mandarin) content for elevatearabia.com/zh/.
+
+Text only; structure comes from content.py (see translation.py). Written for a mainland
+business audience in Simplified Chinese. A native-speaker review is needed before launch.
+People's names stay in Latin script as on the live site.
+"""
+import content as en
+from translation import complete
+
+LANG = dict(code='zh-Hans', dir='ltr', locale='zh_CN', path='zh/', name='中文', short='中文', sep='')
+
+SITE = dict(
+    en.SITE,
+    tagline='为沙特阿拉伯的业务增长提供一体化的战略、财务、治理与执行支持。',
+    address=['沙特阿拉伯吉达', '麦地那路', '苏丹中心 7 楼'],
+)
+
+_SERVICES = {
+    'advisory': dict(
+        label='咨询服务', option='咨询服务：战略、财务或治理',
+        short='将战略、财务、治理与运营架构整合为一套完整方案。',
+        tag='战略 · 财务 · 治理',
+        title='面向增长、架构与执行的一体化咨询',
+        intro='将战略、财务、治理与运营重点整合为一套连贯的业务方案。',
+        overview='强健的企业需要的不只是一份计划，还需要清晰的决策权限、可用的财务信息、健全的治理，以及支撑落地的运营架构。',
+        areas={
+            'strategy': dict(label='战略、规划与增长', short='制定增长战略与业务规划，并配套实现目标所需的运营架构。',
+                             items=['战略与增长规划', '运营架构设计与执行规划']),
+            'finance': dict(label='财务、会计与审计准备', short='建立可靠的数据与控制体系，支持决策并经得起审查。',
+                            items=['管理报告与审计准备', '会计与内部财务控制']),
+            'governance': dict(label='治理、法律协调与风险', short='明确问责机制，并将法律工作与业务计划同步协调。',
+                               items=['治理与决策权限设计', '法律工作协调']),
+        },
+        challenges=['建议停留在理论层面', '财务、法律与运营建议各自为政', '报告薄弱、职责不清', '建议缺乏落实责任人'],
+        deliverables=['业务与增长路线图', '财务控制与报告框架', '治理与问责架构', '实施重点与职责分工'],
+        faq=[('这项服务只面向大型企业吗？', '不是。我们同时服务成熟企业和需要夯实基础的成长型企业。'),
+             ('你们提供法律代理服务吗？', '我们的角色是在战略、财务和治理之外协调法律工作。如需受监管的法律意见或法律代理，请在项目开始时告知我们，以便与您确认服务范围。')],
+    ),
+    'ventures': dict(
+        label='新创企业', short='为新兴企业提供商业架构与执行规划。', tag='从创意到落地',
+        title='打造架构清晰、具备投资价值并可规模化的新创企业',
+        intro='将有潜力的想法转化为商业逻辑清晰、财务规划严谨、落地路径务实的企业。',
+        overview='许多早期项目面临的挑战并非缺少创意，而是从概念到一家能够运营、融资并稳健成长的企业之间的差距。',
+        needs=['初创企业与项目设计', '商业模式与商业计划', '财务建模与分阶段增长规划', '创始人与投资者之间的治理协调',
+               '投资准备', '商业化及进入沙特市场的计划'],
+        challenges=['商业模式的经济性不清晰', '过早融资', '创始人与投资者之间存在治理缺口', '尚未具备运营能力就开始扩张'],
+        deliverables=['项目模型与启动方案', '商业计划与财务假设', '分阶段商业化路线图', '投资者准备与治理重点'],
+        faq=[('创始人在什么阶段可以与你们合作？', '从概念到落地的任何阶段均可，此后还可在融资准备和扩张阶段继续合作。'),
+             ('能保证获得融资吗？', '不能。资本准备能提升您的准备程度，但不保证获得投资。')],
+    ),
+    'capital': dict(
+        label='资本', short='财务模型、投资者材料与严谨的融资准备。', tag='投资准备',
+        title='打造投资者认可的企业',
+        intro='在接触潜在资本合作方之前，明确投资逻辑、财务模型与治理状况。',
+        overview='当企业能够说明所需资金、资金用途以及增长计划为何切实可行时，与投资者的沟通会更具说服力。',
+        needs=['投资逻辑梳理', '财务模型与情景分析', '融资策略与资本规划', '投资者路演材料与配套文件',
+               '尽职调查准备', '治理准备', '必要时提供战略引荐'],
+        challenges=['数据薄弱或前后不一致', '资本需求不明确', '尽职调查材料准备不足', '过早接触投资者'],
+        deliverables=['投资逻辑与材料', '财务与融资模型', '尽职调查准备清单', '资本准备重点'],
+        faq=[('你们直接投资吗？', '我们的职责是帮助您做好投资准备：投资逻辑、财务模型、材料与治理。与我们合作并不保证获得投资。'),
+             ('成熟企业可以使用这项服务吗？', '可以。资本准备支持同样适用于成熟企业和新创企业。')],
+    ),
+    'market-entry': dict(
+        label='市场进入', short='为进入沙特市场量身打造本地化的商业与运营模式。', tag='进入与扩张',
+        title='有架构、有信心地进入沙特市场',
+        intro='将市场机会与合适的本地商业模式、治理安排及分阶段执行计划相结合。',
+        overview='成功进入市场不只是设立本地机构。战略必须契合沙特的运营实际、合作方的期望、资金需求以及可实现的启动节奏。',
+        needs=['沙特市场进入战略', '商业定位与本地化', '运营模式设计', '启动与扩张的财务规划',
+               '治理与法律协调', '利益相关方与合作伙伴协同', '分阶段扩张路线图'],
+        challenges=['本地化不足', '准备不足就过度投入', '利益相关方协同不足', '市场进入工作分散'],
+        deliverables=['进入战略与市场判断', '本地化的商业与运营模式', '合作伙伴与利益相关方重点', '有序的启动与扩张路线图'],
+        faq=[('是否包含公司注册？', '我们的工作重点是进入战略、运营架构和法律协调。请告诉我们您在执照和注册方面的需求，我们会确认哪些属于服务范围。'),
+             ('你们是否支持已在沙特运营的企业？', '支持。我们既支持首次进入，也支持在沙特境内的进一步扩张。')],
+    ),
+    'industrial': dict(
+        label='汽车与工业咨询', short='汽车、工业运营与制造业转型。', tag='工业与运营',
+        title='从战略到车间，全面提升工业准备度',
+        intro='为制造项目、电动与自动驾驶汽车准备、生产系统、产能爬坡及工业能力建设提供专业咨询。',
+        overview='工业项目需要商业逻辑与运营现实相互匹配。我们将工厂与生产规划、启动纪律以及本地能力建设紧密结合。',
+        needs=['汽车与工业战略', '电动与自动驾驶汽车准备规划', '工厂与生产系统建设', '运营转型与自动化',
+               '启动与产能爬坡准备', '短期专家支持', '沙特阿拉伯的工业项目'],
+        challenges=['规划与生产脱节', '技术能力存在缺口', '启动或产能爬坡存在不确定性', '制造准备不足'],
+        deliverables=['工业准备度评估', '运营转型重点', '投产行动计划', '能力与专家支持图谱'],
+        faq=[('是否仅限于汽车行业？', '不是。我们也支持更广泛的工业与制造项目。'),
+             ('改善（Kaizen）如何融入其中？', '通过与日本平山控股的战略合作，我们的工作注重现场改善（Gemba Kaizen）与持续改进。')],
+    ),
+    'construction-technology': dict(
+        label='建筑科技', short='以技术为核心的建筑体系、交付模式与商业化。', tag='建成环境',
+        title='以技术驱动的交付推动建筑业发展',
+        intro='为模块化、技术驱动和工业化的建造方式提供战略与商业化支持。',
+        overview='我们支持智能建造、轻钢结构与轻质混凝土体系，以及旨在提升效率、建筑性能与可扩展性的交付模式。',
+        needs=['模块化与智能建筑体系', '轻钢结构建造模式', '轻质混凝土体系', '交付与商业化规划', '节能建造方式', '合作与增长协同'],
+        challenges=['交付模式缓慢且分散', '创新建筑体系难以规模化', '技术与市场之间存在差距', '性能规划不一致'],
+        deliverables=['商业化与市场模式', '合作与增长重点', '实施与交付路线图', '技术采用考量'],
+        faq=[('什么是 Quadratech？', 'Quadratech 是本服务中重点介绍的建筑技术，同时包括 Quadraframe 与 Quadracrete 两个体系。'),
+             ('建造速度能提升多少？', '据 Quadratech 介绍，施工时间最多可缩短 40%。实际效果取决于具体项目，我们会与您探讨适合您项目的合理预期。')],
+    ),
+}
+
+_LIFE_SCIENCES = dict(
+    label='生命科学与医疗健康', short='生物技术、再生医学、诊断与医疗创新。', tag='行业专长',
+    title='为沙特阿拉伯打造生命科学企业',
+    intro='为生物技术、再生医学、治疗、诊断及医疗创新提供聚焦行业的战略、架构与商业化支持。',
+    overview='科学价值需要可持续的商业架构、投资者信心、健全的治理以及可信的商业化计划作为支撑。',
+    needs=['生物技术', '再生医学', '治疗产品与服务', '诊断与精准健康', '医疗创新平台', '研究与商业化项目'],
+    challenges=['从研究到商业化的路径薄弱', '研发周期资本密集', '监管与市场规划存在缺口', '过早扩张'],
+    deliverables=['生命科学商业化路线图', '治理与业务架构', '投资逻辑与财务计划', '进入沙特市场的重点'],
+    faq=[('你们开展临床试验吗？', '不开展。我们的工作是商业、财务、治理及创业支持，临床运营不在此范围内。'),
+         ('服务是否包括监管审批？', '我们支持监管与市场规划及协调。监管审批的责任范围将与您直接商定。')],
+)
+
+_SECTORS = {
+    'life-sciences': dict(label='生命科学与医疗健康', category='创新', desc='生物技术、再生医学、诊断、治疗与医疗创新。', link_label='生命科学详情'),
+    'technology': dict(label='科技与先进产业', category='产业', desc='先进制造、创新驱动型项目与技术运营平台。', link_label='汽车与工业咨询'),
+    'investment': dict(label='投资、金融与资产平台', category='资本', desc='支持投资与资产平台的商业模式、准备工作与架构。', link_label='资本'),
+    'education': dict(label='教育与能力建设平台', category='创新', desc='面向学习、培训与能力建设类企业的商业模式。'),
+    'agriculture': dict(label='食品、农业与可持续创新', category='产业', desc='农业食品、可持续发展与资源类企业的增长与商业化。'),
+    'media': dict(label='传媒、娱乐与消费类项目', category='消费', desc='面向受众驱动、娱乐及消费类项目的战略与架构。'),
+    'made-in-saudi': dict(label='沙特制造与国家发展平台', category='产业', desc='本地化、国家能力建设与沙特工业增长。', link_label='市场进入'),
+}
+
+VALUES = [
+    ('诚信与问责', '相互尊重的合作关系与清晰的责任。'),
+    ('持续改进', '注重改善（Kaizen）与务实的运营学习。'),
+    ('创新与品牌', '商业创新与差异化的价值主张。'),
+    ('合作伙伴关系', '建立在互信与优势互补基础上的合作。'),
+    ('社区', '长期贡献与有意义的本地联系。'),
+    ('环境与安全', '负责任、安全且管理良好的工作场所。'),
+]
+
+STEPS = [
+    ('理解', '明确目标、约束条件、利益相关方与机会。'),
+    ('构建', '建立商业、治理与财务方案。'),
+    ('执行', '将决策转化为有优先级的行动与务实支持。'),
+]
+
+_ROLES = {
+    'Sheikh Hamza Albakry': '董事长兼联合创始人', 'Mohamed Chaudhry': '首席执行官兼联合创始人',
+    'Osama Albakry': '总经理兼联合创始人', 'Eyad Albakry': '法律顾问', 'Waddah Swar': '东部省负责人',
+    'Ibrahim Albakry': '首席财务官', 'Mohammed Batarfi': '财务顾问', 'Mohammed Saqib Bashir': '汽车工业顾问',
+    'Abdelrafea Fakher': '精益管理专家', 'Bahaa Mohammed': '行政经理', 'Rama Abdulnaser Hussain Charam': '战略分析',
+    'Akihiro Ito': '流程改进顾问', 'Hiromitsu Hayashida': '丰田田原工厂前副厂长', 'Toshio Morishima': '电装前工厂厂长',
+    'Kouichi Kakizawa': '资深专家', 'Tadashi Mori': '丰田前首席主管', 'Mitsuru Suzuki': '丰田前生产工程负责人',
+    'Tsutomu Orito': '曾任职于丰田与电装天', 'Ishikawa Hisayoshi': '专业工程师', 'Tadamasa Ishigaki': '丰田前首席主管',
+    'Toshio Takeuchi': '现场改善顾问', 'Kenichi Sawada': '曾任职于索尼', 'Maresuke Ishii': '改善与海外拓展顾问',
+    'Shigeyuki Obara': '理光生产工程部', 'Miyuky Honda': '咨询部经理', 'Kazuhiro Tsuchiya': '管理顾问，工学博士',
+}
+
+STATS = [
+    (en.STATS[0][0], '服务领域：从战略到市场进入'),
+    (en.STATS[1][0], '重点行业：从生命科学到国家发展'),
+    (en.STATS[2][0], '团队成员，分布于沙特阿拉伯与日本'),
+]
+
+PARTNER = dict(en.PARTNER, name='平山控股株式会社', photo_alt='Elevate Arabia 与平山控股团队')
+PARTNER_CLIENTS_LABEL = '我们的合作伙伴平山控股的客户'
+
+# Translation of the English legal text in content.py; a lawyer should review it.
+LEGAL_UPDATED = '2026年11月4日'
+
+TERMS = dict(
+    disclaimer=[
+        '本网站信息仅供一般参考，不构成沙特阿拉伯王国法律法规意义下的法律、财务、税务、审计、监管、投资或其他专业意见。用户依赖本网站或其内容的风险由其自行承担。',
+        'Elevate Arabia 会尽合理努力确保网站内容准确并及时更新，但不对本网站任何内容的准确性、完整性、可靠性或适用性作出任何明示或默示的陈述或保证。内容可能随时更新、修改或删除，恕不另行通知。',
+        '除非经正式书面约定，本网站的任何内容均不建立任何客户、咨询、信托、法律、审计、雇佣、合伙或其他专业关系。',
+        '本网站中涉及沙特法律、监管、治理、隐私、合规或市场事项的内容仅具一般性质。用户在作出任何商业、法律、财务、监管或运营决策之前，应根据自身具体情况寻求独立的专业意见。',
+        '通过本网站收集的任何个人数据，将依照沙特阿拉伯王国适用的法律法规（包括《个人数据保护法》）进行处理。',
+        '本网站可能包含指向第三方网站或外部资源的链接。Elevate Arabia 无法控制任何第三方网站的内容、可用性、安全性或隐私做法，也不对此承担责任。',
+        '除另有说明外，本网站及其内容的所有知识产权均予保留。',
+    ],
+    intro='访问或使用本网站，即表示您同意本使用条款。如您不同意，请勿使用本网站。',
+    clauses=[
+        ('网站用途', '本网站用于提供有关 Elevate Arabia 及其服务、行业和业务领域的一般信息。本网站的任何内容均不构成法律、财务、税务、审计、投资、监管或其他专业意见。'),
+        ('不构成专业关系', '您使用本网站并不与 Elevate Arabia 建立任何客户、咨询、信托、合伙、雇佣或其他专业关系。任何专业合作均须另行签订书面协议。'),
+        ('允许的使用', '您仅可出于合法目的使用本网站，且不得以损害、干扰、滥用或妨碍本网站、其内容或其运行的方式使用。'),
+        ('信息的准确性', '我们会尽合理努力保持网站内容准确并及时更新，但不保证所有内容始终完整、准确或最新。内容可能随时更新、修改或删除，恕不另行通知。'),
+        ('第三方链接', '本网站可能为方便起见提供第三方网站链接。Elevate Arabia 无法控制任何第三方网站的内容、可用性或做法，也不对此承担责任。'),
+        ('知识产权', '除另有说明外，本网站的所有内容（包括文字、版式、品牌、图形及其他材料）均归 Elevate Arabia 所有或经其授权使用，并受适用法律保护。未经事先书面许可，您不得复制、转载、重新发布、分发、修改或以商业方式利用网站内容。'),
+        ('隐私', '通过本网站提交的任何个人数据，将依照我们的隐私政策以及沙特阿拉伯王国适用的法律法规（包括《个人数据保护法》）进行处理。'),
+        ('责任限制', '在适用法律允许的最大范围内，Elevate Arabia 不对因使用或依赖本网站或其内容而产生或与之相关的任何直接、间接、附带、后果性或其他损失或损害承担责任。'),
+        ('适用法律', '本使用条款受沙特阿拉伯王国法律法规管辖并据其解释。'),
+        ('条款变更', '我们可能不时更新本使用条款。任何更新将发布在本页面，并同时修改“最后更新”日期。'),
+    ],
+)
+
+PRIVACY = dict(
+    contact=en.PRIVACY['contact'],
+    paragraphs=[
+        'Elevate Arabia 尊重您的隐私，并致力于依照沙特阿拉伯王国适用的法律法规保护个人数据。',
+        '我们可能收集个人数据，例如您的姓名、公司名称、职位、电子邮箱地址、电话号码，以及您通过我们的网站、电子邮件或其他沟通方式提供的任何信息。我们还可能收集有限的技术数据，例如 IP 地址和浏览器信息。',
+        '我们使用个人数据来回复咨询、提供服务、管理业务关系、改进网站与运营，并履行法律或监管义务。',
+        '我们不出售个人数据。我们仅在必要时与服务提供商或专业顾问共享个人数据，或在法律要求时与相关主管机关共享。',
+        '我们采取合理的技术和组织措施，保护个人数据免遭未经授权的访问、滥用、丢失或披露。',
+        '在沙特法律适用的情况下，您可能有权要求访问您的个人数据、要求更正、在允许的情况下要求删除，以及在以同意为处理依据时撤回同意。',
+        '如个人数据被传输至沙特阿拉伯境外，我们将依照适用的法律要求进行。',
+        '本网站不设置 Cookie，也不使用分析或广告追踪工具。咨询表单不会发送或存储您的信息，而是在您的邮件应用中打开一封预先填好的邮件。',
+    ],
+    changes='我们可能不时更新本隐私政策。任何更新将发布在本页面，并同时修改“最后更新”日期。',
+)
+
+UI = dict(
+    skip='跳至正文', nav_label='主导航', menu_open='打开菜单', menu_close='关闭菜单',
+    nav_services='服务', nav_sectors='行业', nav_about='关于我们', nav_contact='联系我们',
+    home_alt='Elevate Arabia 首页', new_tab='（在新标签页中打开）', breadcrumb_label='面包屑导航', home='首页',
+    footer_services='服务', footer_company='公司', footer_contact='联系方式', footer_follow='关注我们',
+    maps='在谷歌地图中打开', privacy='隐私政策', terms='条款与条件',
+    language='语言', period='。', form_note_end='。',
+    home_title='战略、资本与进入沙特市场',
+    home_desc='Elevate Arabia 帮助企业、创始人和投资者在沙特阿拉伯完成业务架构、融资、治理与规模扩张。',
+    hero_eyebrow='战略 · 资本 · 市场进入',
+    hero_title='构建企业与资本路径，[打造面向市场的新创项目。]',
+    hero_lead='Elevate Arabia 通过一体化咨询、资本准备、新创企业支持和市场进入执行，帮助企业、创始人和投资者在沙特阿拉伯完成业务架构、融资、治理与规模扩张。',
+    cta_discuss='洽谈项目', explore_services='了解我们的服务', all_services='全部服务',
+    services_eyebrow='服务', services_heading='围绕您需要解决的挑战，[量身打造。]',
+    services_intro='我们不把各项专业割裂开来，而是将业务方向、财务架构与实施落地整合为一套互相衔接的方法。',
+    how_eyebrow='工作方式', how_heading='从复杂[到清晰。]',
+    how_intro='每个项目各不相同，但工作通常从理解问题开始，进而搭建合适的架构，并支持落地执行。',
+    who_eyebrow='关于我们', who_heading='一体化视角，[多学科协同。]',
+    who_body='我们与成熟企业、创业者和投资者合作，融合商业规划、财务纪律、治理与行业洞察，注重落地执行，而非脱离实际的建议。',
+    partner_eyebrow='国际合作伙伴', partner_short_name='平山控股',
+    partner_short_body='我们在日本的战略合作伙伴，带来制造改善与现场改善（Gemba Kaizen）方面的专长。',
+    our_partnership='我们的合作', about_link='了解 Elevate Arabia',
+    clients_eyebrow='客户', clients_heading='合作网络[与伙伴。]',
+    clients_intro='覆盖生命科学、科技、可持续发展与金融领域的客户与合作伙伴。',
+    sectors_eyebrow='行业', sectors_heading='深谙行业，[严谨经营。]',
+    sectors_intro='我们将咨询与企业构建能力应用于创新、先进产业以及沙特的增长型行业。',
+    all_sectors='全部行业',
+    home_cta_title='携手开创[未来。]',
+    home_cta_body='欢迎与我们的团队探讨您的业务、投资或沙特市场机遇。',
+    services_title='服务',
+    services_desc='Elevate Arabia 提供咨询、新创企业、资本、沙特市场进入、汽车与工业咨询以及建筑科技服务。',
+    services_hero_title='业务支持，[全程贯通。]',
+    services_hero_lead='战略、商业规划、财务纪律、治理、投资准备与沙特市场执行，条理清晰，助您快速找到合适的专业支持。',
+    areas_eyebrow='服务领域', areas_heading='八大服务领域。', areas_intro='逐一了解各领域，或与我们探讨组合方案。',
+    journey_eyebrow='方法', journey_heading='不是八个孤立的部门，[而是一段完整的业务旅程。]',
+    journey_body='客户可能从战略起步，随后需要财务架构、治理、投资者准备与市场进入。我们将这些环节整合在一起，让每一步都建立在上一步的基础之上。',
+    journey_steps=['战略', '架构', '资本', '执行'],
+    services_cta_title='需要多项能力组合？',
+    services_cta_body='请描述您的业务挑战，我们将帮助您确定合适的切入点。',
+    discuss_service='洽谈此项服务', discuss_project='洽谈您的项目', where_help_link='我们能提供的帮助',
+    overview_eyebrow='概述', overview_heading='着眼于[务实推进。]',
+    support_eyebrow='支持内容', support_heading='我们能提供的帮助。',
+    outcomes_eyebrow='挑战与成果', outcomes_heading='哪些方面[需要改进？]',
+    challenges_title='常见挑战', challenges_sub='我们通常帮助解决的问题。',
+    outputs_title='典型成果', outputs_sub='每个项目都会根据您的情况确定范围。',
+    faq_eyebrow='常见问题', faq_heading='须知事项。', related_eyebrow='相关', related_heading='相关服务。',
+    detail_cta_title='有具体的挑战需要解决？',
+    detail_cta_body='分享您的目标，团队将与您探讨相关的工作内容。',
+    enquire_service='咨询此项服务',
+    sectors_title='行业',
+    sectors_desc='Elevate Arabia 服务的行业，涵盖生命科学、先进产业、教育、农业、传媒及国家发展等领域。',
+    sectors_hero_title='行业专长，[商业视角。]',
+    sectors_hero_lead='不同行业面临不同的市场现实，但稳健的规划、财务、治理与执行始终是根本。',
+    focus_eyebrow='重点行业', focus_heading='我们的业务领域。',
+    focus_intro='覆盖创新、产业、资本与消费市场的七大重点行业。',
+    why_eyebrow='重要意义', why_heading='行业各异，[方法相通。]',
+    why_body='对行业的了解有助于形成更合理的商业假设和更充分的投资准备。我们将这一认识与业务建模、资本准备和沙特市场执行相结合。',
+    ls_link='生命科学详情',
+    sectors_cta_title='身处专业细分行业？',
+    sectors_cta_body='请告诉我们您所在的行业、地域以及项目所处阶段。', sectors_cta_label='探讨您的行业',
+    about_title='关于我们',
+    about_desc='Elevate Arabia 是一家位于吉达的战略增长与一体化咨询公司，服务企业、创始人和投资者。',
+    about_hero_title='一家战略增长[与一体化咨询公司。]',
+    about_hero_lead='Elevate Arabia 通过相互衔接的战略、财务、治理、协调与执行支持，助力企业、新创项目和投资者。',
+    about_who_heading='清晰、可控，[充满信心。]',
+    about_who_body='我们注重商业成效，跨学科整合，以执行为导向。我们服务于成熟企业，也服务于在沙特阿拉伯寻求增长的新创企业。',
+    about_statement='从概念、资本准备到商业化与运营，更强大的企业始于正确的架构。',
+    values_eyebrow='价值观', values_heading='我们的工作原则。',
+    partnership_eyebrow='国际合作', partnership_heading='共同专注于[持续改进。]',
+    partnership_body='日本平山控股是我们的国际战略合作伙伴，专注于现场改善（Gemba Kaizen）、制造绩效与持续改进。',
+    partner_location='日本东京。制造能力、持续改进与工业咨询。',
+    visit_partner='访问平山控股网站',
+    team_eyebrow='团队', team_heading='成就工作的[专业经验。]',
+    team_intro='我们在沙特阿拉伯的团队，并由制造与持续改进领域的国际专家提供支持。',
+    team_saudi='沙特阿拉伯', team_international='国际团队',
+    about_cta_title='与 Elevate Arabia 合作。',
+    about_cta_body='欢迎探讨业务挑战、潜在合作或伙伴关系机会。', about_cta_label='联系团队',
+    contact_title='联系我们',
+    contact_desc='联系位于吉达的 Elevate Arabia，咨询战略咨询、新创企业、资本准备或进入沙特市场等事宜。',
+    contact_hero_title='一起探讨[您的下一步。]',
+    contact_hero_lead='无论您是要进入沙特市场、打造新创企业，还是准备融资，都可以从一次清晰的沟通开始。',
+    direct_eyebrow='直接联系', direct_heading='告诉我们[您正在打造什么。]',
+    email_label='电子邮箱', phone_label='电话', office_label='办公地址', social_label='社交媒体', form_heading='咨询表单',
+    required_before='标有', required_sr='星号', required_after='的字段为必填项。',
+    f_name='姓名', f_name_req='请输入您的姓名。', f_email='电子邮箱', f_email_req='请输入您的电子邮箱地址。',
+    f_company='公司', f_phone='电话', f_interest='我们能为您提供什么帮助？', f_interest_req='请选择一项服务。',
+    f_choose='请选择服务', f_other='其他', f_message='项目详情',
+    f_message_req='请简要介绍您的项目。', f_message_hint='您的目标、当前阶段以及所需的支持。',
+    submit='生成邮件',
+    form_note='提交后将在您的邮件应用中打开一封预先填好的邮件，供您在发送前核对。本网站不会存储任何信息。详见我们的',
+    js_required='此项为必填项。', js_email='请输入有效的电子邮箱地址，例如 name@company.com。',
+    js_min='请补充更多细节（至少 {min} 个字符，目前 {count} 个）。',
+    js_fix_one='请检查标出的字段。', js_fix_many='请检查标出的 {count} 个字段。',
+    js_ok='您的邮件应用将打开，邮件已准备好供您核对和发送。如果没有反应，请{manual}，或发送邮件至 {email}。',
+    js_ok_manual='手动打开', js_subject='网站咨询',
+    js_lbl_name='姓名', js_lbl_email='电子邮箱', js_lbl_company='公司', js_lbl_phone='电话', js_lbl_interest='咨询服务',
+    legal_eyebrow='法律信息', last_updated='最后更新：{date}',
+    terms_lead='使用本网站适用的条款。', terms_desc='使用 Elevate Arabia 网站适用的条款。',
+    disclaimer_eyebrow='法律免责声明', disclaimer_heading='免责声明。',
+    termsofuse_eyebrow='使用条款', termsofuse_heading='使用条款。',
+    privacy_lead='我们如何处理个人数据，以及如何就此与我们联系。',
+    privacy_desc='Elevate Arabia 如何处理个人数据，以及如何就此与其联系。',
+    privacy_eyebrow='隐私', privacy_heading='您的个人数据。',
+    privacy_contact='有关您个人数据的问题或请求：',
+    messaging='在线沟通', whatsapp='WhatsApp', whatsapp_action='通过 WhatsApp 联系',
+    whatsapp_text='您好，Elevate Arabia，我想洽谈一个项目。',
+    wechat='微信', wechat_hint='在微信中搜索此 ID 即可添加我们。', copy='复制 ID', copied='已复制',
+    wechat_qr_alt='Elevate Arabia 微信二维码', line='LINE', line_action='在 LINE 上添加我们',
+    nf_eyebrow='错误 404', nf_title='页面未找到。', nf_lead='您要查找的页面不存在或已被移动。',
+    nf_home='返回首页', nf_contact='联系我们',
+)
+
+complete(globals())

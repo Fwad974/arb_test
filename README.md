@@ -6,24 +6,38 @@ script and deployed to GitHub Pages by GitHub Actions. There are no frameworks, 
 third-party requests (the font is self-hosted), nothing to install, and every page works
 without JavaScript.
 
-- English at `/`, Arabic at `/ar/`.
+- English at `/`, Arabic at `/ar/`, Chinese at `/zh/`, Japanese at `/ja/`.
 - What was wrong with the original prototype, and what changed: [`docs/REVIEW.md`](docs/REVIEW.md).
 - Status of each finding in the Flopexa website review (28 October 2026): [`docs/review-status.md`](docs/review-status.md).
 
 ## Languages
 
-The English site is at `/` and the Arabic site at `/ar/`. Both come from the same templates,
-and every page has a language switch and `hreflang` tags.
+| Language | Address | Content file | Font |
+|---|---|---|---|
+| English | `/` | `content.py` | IBM Plex Sans (self-hosted) |
+| Arabic | `/ar/` | `content_ar.py` | Readex Pro (self-hosted), right-to-left |
+| Chinese (Simplified, Mandarin) | `/zh/` | `content_zh.py` | The visitor's system font (PingFang SC, Microsoft YaHei, Noto Sans SC) |
+| Japanese | `/ja/` | `content_ja.py` | The visitor's system font (Hiragino, Yu Gothic, Noto Sans JP) |
+
+All four come from the same templates. Every page has a language menu (a globe in the header,
+which on phones stays visible next to the menu button), and the footer lists all four. Each
+link goes to the same page in that language, and `hreflang` tags tell search engines how the
+versions relate.
 
 - English copy, including the interface text in `UI`, is in `content.py`.
-- Arabic copy is in `content_ar.py`. It takes the structure (slugs, links, photos, phone
-  numbers) from `content.py` and supplies only the text, matched by slug or name.
-- If you add a service, sector, team member or `UI` string in English, add its Arabic text
-  too. The build stops with an error that names whatever is missing.
-- Arabic pages are right-to-left (`dir="rtl"`) and use Readex Pro. Layout CSS uses
-  logical properties, so it mirrors automatically, and arrows flip in Arabic.
+- Each translation file supplies only the text, matched by slug or name. Structure (slugs,
+  links, photos, phone numbers, logos) comes from `content.py` through `translation.py`.
+- If you add a service, sector, team member or `UI` string in English, add it to every
+  translation. The build stops with an error that names the language and what is missing.
+- Chinese and Japanese use system fonts because Chinese and Japanese web fonts are several MB.
+  Every current phone and computer has a good one, and each language lists its own fonts so
+  characters get the right regional shapes. Japanese headings break at natural phrase
+  boundaries, and Chinese headings break at punctuation on wide screens.
+- To add another language, copy `content_ja.py`, translate it, give it a new `LANG` (code,
+  folder, name), and add it to `LANGS` in `build.py`.
 
-The Arabic translation needs a native-speaker review before launch.
+All three translations need a native-speaker review before launch. People's names stay in
+Latin script, as on the live site.
 
 ## Run it locally
 
@@ -41,7 +55,7 @@ Open http://localhost:8000. Rebuild after each edit with `python3 build.py`.
 |---|---|
 | WhatsApp number, WeChat ID and QR code, LINE Official Account | `site.env` |
 | English copy: services, sectors, team, contact details, social links, client logos, legal text, interface text | `content.py` |
-| Arabic copy (same structure, text only) | `content_ar.py` |
+| Translations (same structure, text only) | `content_ar.py`, `content_zh.py`, `content_ja.py` |
 | Logos, team photos, brand files | `assets/images/` (WebP) |
 | Preparing a new client logo | `scripts/prepare_logos.py` (needs Pillow and NumPy, see below) |
 | Page templates and layout | `build.py` |
@@ -128,11 +142,11 @@ logo is the right size.
 Checks every page at 7 widths (320–2560px), in light and dark mode, for overflow, JS errors
 and WCAG AA text contrast. It also confirms that forced dark mode (the "darken websites"
 setting on Android browsers) leaves the page exactly as designed.
-It covers both languages, and also checks that the headline and main button are on the first screen of a 1280×720 laptop,
+It covers all four languages, and also checks that the headline and main button are on the first screen of a 1280×720 laptop,
 and tests the mobile menu, anchor offsets under the sticky header, contact form validation, the
 mailto output, the old-address redirects, that no cookies are set, that no research notes
-remain in the legal text, and the 404 page. On the Arabic site it also checks `lang`/`dir`,
-untranslated text, the language switch and the Arabic form messages and email.
+remain in the legal text, and the 404 page. On the translated sites it also checks `lang`/`dir`,
+untranslated text, the language menu, and the form messages and email in each language.
 
 ```bash
 npm install --no-save playwright && npx playwright install chromium

@@ -66,6 +66,7 @@ https://www.elevatearabia.com/ (fetched 4 November 2026), and what changed.
 - **Global logos and the 1,500+ figure.** These appear to describe the partner Hirayama Holdings, so both are now hidden (`SHOW_PARTNER_CLIENTS = False`). Show the logos only with written permission, labelled as the partner's clients.
 - **Network & partners logos.** Confirm the names used as alt text, especially "Al Bakri" (read from the Arabic logo).
 - **Social profiles.** Add the real URLs to `SITE.social` in `content.py`; nothing is shown until you do.
+- **Chinese and Japanese versions.** Have native speakers review `content_zh.py` and `content_ja.py`, including the Chinese and Japanese renderings of the office address, and decide whether the Japanese team's names should appear in kanji on the Japanese site.
 - **Arabic version.** Have a native speaker review `content_ar.py`, confirm the Arabic office address ("سلطان سنتر"), decide whether names should appear in Arabic script, and confirm which language version of the legal text prevails.
 - **Team photos.** Rama Abdulnaser Hussain Charam has no photo on the live site, so initials are shown.
 - **Legal pages.** The Terms and Privacy text is now hosted on this site, with the live site's research notes removed and the cookie statement corrected. A lawyer should review both before launch.

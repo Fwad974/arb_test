@@ -90,7 +90,33 @@
 :root[lang="ar"] .eyebrow, :root[lang="ar"] .row__kicker, :root[lang="ar"] .footer-title,
 :root[lang="ar"] .contact-list dt, :root[lang="ar"] .row__num, :root[lang="ar"] .step__num,
 :root[lang="ar"] .area__num { font-size: 0.875rem; font-weight: 500; }
-.nf-alt { margin-top: 40px; font-family: "Readex Pro", var(--font); color: var(--muted); }
+.nf-alt { margin-top: 24px; color: var(--muted); }
+.nf-alt:lang(ar) { font-family: "Readex Pro", var(--font); }
+.nf-alt:first-of-type { margin-top: 40px; }
+
+/* Chinese and Japanese: the visitor's own system fonts (CJK web fonts are several MB),
+   listed per language so each gets the right regional glyph shapes. Plex Sans comes first
+   for Latin text such as names and email addresses. No letter-spacing, more line height,
+   and line lengths set in em, because a Latin "ch" is half a CJK character wide. */
+:root[lang="zh-Hans"] { --font: "IBM Plex Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif; }
+:root[lang="ja"] { --font: "IBM Plex Sans", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", YuGothic, Meiryo, "Noto Sans JP", "Noto Sans CJK JP", sans-serif; }
+:root[lang="zh-Hans"] *, :root[lang="ja"] * { letter-spacing: 0 !important; }
+:root[lang="zh-Hans"] body, :root[lang="ja"] body { line-height: 1.85; }
+:root[lang="ja"] body { line-break: strict; }
+/* Headings break at natural points: Japanese at phrase boundaries (auto-phrase, Chrome;
+   other browsers break normally), Chinese at punctuation where the line is wide enough.
+   On phones Chinese breaks normally and text-wrap: balance avoids a lone last character. */
+:root[lang="ja"] :is(h1, h2, h3, .row__title) { word-break: auto-phrase; }
+@media (min-width: 641px) {
+  :root[lang="zh-Hans"] :is(h1, h2) { word-break: keep-all; overflow-wrap: anywhere; }
+}
+:root[lang="zh-Hans"] h1, :root[lang="ja"] h1 { font-size: clamp(2rem, 1.3rem + 2.6vw, 3.4rem); line-height: 1.3; }
+:root[lang="zh-Hans"] h2, :root[lang="ja"] h2 { font-size: clamp(1.55rem, 1.2rem + 1.3vw, 2.2rem); line-height: 1.4; }
+:root[lang="zh-Hans"] h3, :root[lang="ja"] h3, :root[lang="zh-Hans"] .row__title, :root[lang="ja"] .row__title { line-height: 1.55; }
+:root[lang="zh-Hans"] .hero h1, :root[lang="ja"] .hero h1 { max-width: 14em; }
+:root[lang="zh-Hans"] .split__head h2, :root[lang="ja"] .split__head h2,
+:root[lang="zh-Hans"] .cta h2, :root[lang="ja"] .cta h2, :root[lang="zh-Hans"] .wide__head h2, :root[lang="ja"] .wide__head h2 { max-width: 12em; }
+:root[lang="zh-Hans"] .lead, :root[lang="ja"] .lead, :root[lang="zh-Hans"] .body-lg, :root[lang="ja"] .body-lg { line-height: 1.85; }
 
 /* ---------- base ---------- */
 *, *::before, *::after { box-sizing: border-box; }
@@ -168,10 +194,30 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .brand img { height: 26px; width: auto; }
 .site-footer .brand img { height: 28px; }
 .site-nav { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 32px; }
-.site-nav > a:not(.button), .lang-switch--header { padding-block: 8px; color: var(--text); text-decoration: none; font-size: 0.9375rem; }
-.site-nav > a:not(.button):hover, .lang-switch--header:hover { color: var(--accent-text); text-decoration: underline; }
+.site-nav > a:not(.button) { padding-block: 8px; color: var(--text); text-decoration: none; font-size: 0.9375rem; }
+.site-nav > a:not(.button):hover { color: var(--accent-text); text-decoration: underline; }
 .site-nav > a[aria-current="page"]:not(.button) { color: var(--ink); text-decoration: underline; text-decoration-thickness: 2px; text-decoration-color: var(--accent-text); text-underline-offset: 0.45em; }
-.lang-switch--header { display: none; }
+/* Language menu: a native disclosure, so it works without JavaScript. */
+.lang-menu { position: relative; order: 2; }
+.nav-toggle { order: 3; }
+.lang-menu summary {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding-inline: 4px;
+  list-style: none; cursor: pointer; color: var(--text); font-size: 0.9375rem;
+}
+.lang-menu summary::-webkit-details-marker { display: none; }
+.lang-menu summary:hover { color: var(--accent-text); }
+.lang-menu summary .icon { width: 18px; height: 18px; }
+.lang-menu ul {
+  position: absolute; inset-inline-end: 0; top: calc(100% + 6px); z-index: 60; min-width: 168px;
+  margin: 0; padding: 6px; list-style: none;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--menu-shadow);
+}
+.lang-menu a { display: block; padding: 10px 12px; border-radius: 6px; color: var(--text); text-decoration: none; }
+.lang-menu a:hover { background: var(--surface); color: var(--ink); }
+.lang-menu a[aria-current] { color: var(--ink); font-weight: 600; }
+.lang-menu a[aria-current]::after { content: "✓"; float: inline-end; color: var(--accent-text); }
+.site-footer .footer-langs { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.footer-langs a[aria-current] { color: var(--on-dark-muted); }
 .nav-toggle {
   display: none; width: 44px; height: 44px; margin-inline-end: -10px; padding: 0;
   align-items: center; justify-content: center;
@@ -184,8 +230,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @media (max-width: 760px) {
   .js .nav-toggle { display: inline-flex; }
   /* On phones the language switch sits in the header itself, not inside the menu. */
-  .js .lang-switch--header { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 4px; }
-  .js .site-nav .lang-switch { display: none; }
+  .lang-menu { margin-inline-end: 4px; }
   .js .site-nav {
     display: none; position: absolute; top: 100%; left: 0; right: 0;
     flex-direction: column; align-items: stretch; gap: 0;
@@ -443,7 +488,7 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 .site-footer .link-arrow .icon { color: var(--on-dark-muted); }
 .footer-address { margin-top: 16px; color: var(--on-dark); }
 .footer-bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 32px; margin-top: 56px; padding-top: 24px; border-top: 1px solid rgba(255, 255, 255, 0.14); color: var(--on-dark-muted); font-size: 0.875rem; }
-.footer-bottom span:last-child { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.footer-legal { display: flex; flex-wrap: wrap; gap: 8px 24px; }
 
 /* ---------- responsive ---------- */
 @media (max-width: 899px) {

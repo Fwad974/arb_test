@@ -26,8 +26,10 @@ from urllib.parse import quote, urlsplit
 
 import content as EN
 import content_ar as AR
+import content_ja as JA
+import content_zh as ZH
 
-LANGS = [EN, AR]
+LANGS = [EN, AR, ZH, JA]   # the first is the default language, served at the site root
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / 'dist'
 SITE_URL = os.environ.get('SITE_URL', '').strip().rstrip('/')
@@ -82,10 +84,6 @@ def t(key, **values):
     return text.format(**values) if values else text
 
 
-def other_language():
-    return AR if C is EN else EN
-
-
 # --------------------------------------------------------------------------- helpers
 
 def e(text):
@@ -106,6 +104,7 @@ ICONS = {
     'external': '<path d="M7 17 17 7M9 7h8v8"/>',
     'menu': '<path d="M4 7h16M4 12h16M4 17h16"/>',
     'close': '<path d="M6 6l12 12M18 6 6 18"/>',
+    'globe': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3Z"/>',
 }
 
 
@@ -366,10 +365,17 @@ def layout(slug, title, description, body):
     current = section_of(slug)
     filename = 'index.html' if slug == 'index' else f'{slug}.html'
     full_title = f'{C.SITE["name"]}: {title}' if slug == 'index' else f'{title} | {C.SITE["name"]}'
-    other = other_language()
     has_twin = slug != '404'
     twin = filename if has_twin else 'index.html'
-    switch_href = (f'{other.LANG["path"]}{twin}' if C is EN else f'{PREFIX}{twin}')
+
+    def lang_links():
+        # The same page in every language, each label in its own script.
+        items = []
+        for m in LANGS:
+            current_attr = ' aria-current="true"' if m is C else ''
+            items.append(f'<li><a href="{PREFIX}{m.LANG["path"]}{twin}" hreflang="{m.LANG["code"]}" '
+                         f'lang="{m.LANG["code"]}"{current_attr}>{e(m.LANG["name"])}</a></li>')
+        return ''.join(items)
 
     def nav_link(label, href, key):
         cur = ' aria-current="page"' if key == current else ''
@@ -379,8 +385,8 @@ def layout(slug, title, description, body):
         ('nav_services', 'services.html', 'services'), ('nav_sectors', 'sectors.html', 'sectors'),
         ('nav_about', 'about.html', 'about')])
     contact_cur = ' aria-current="page"' if current == 'contact' else ''
-    lang_switch = (f'<a class="lang-switch" href="{switch_href}" hreflang="{other.LANG["code"]}" lang="{other.LANG["code"]}" '
-                   f'title="{e(other.UI["lang_switch_label"])}">{e(other.LANG["name"])}</a>')
+    lang_menu = (f'<details class="lang-menu"><summary aria-label="{e(t("language"))}: {e(lang["name"])}">'
+                 f'{icon("globe")}<span>{e(lang["short"])}</span></summary><ul>{lang_links()}</ul></details>')
 
     head_extra = [f'<meta property="og:locale" content="{lang["locale"]}">']
     base = ''
@@ -401,6 +407,8 @@ def layout(slug, title, description, body):
         head_extra.append('<meta name="robots" content="noindex">')
     if slug == 'index' and C is EN:
         head_extra.append(organization_jsonld())
+    # Arabic preloads Readex Pro; Chinese and Japanese use the visitor's system fonts
+    # (CJK web fonts are several MB), with Plex Sans for any Latin text.
     font = 'readex-pro-arabic' if lang['code'] == 'ar' else 'ibm-plex-sans-latin'
     preloads = ''.join(f'<link rel="preload" href="{asset(f"fonts/{font}-{w}.woff2")}" as="font" type="font/woff2" crossorigin>\n'
                        for w in (400, 600))
@@ -448,13 +456,12 @@ def layout(slug, title, description, body):
 <header class="site-header">
   <div class="wrap site-header__inner">
     <a class="brand" href="index.html"><picture><source srcset="{asset("images/" + BRAND)}" media="(prefers-color-scheme: dark)">{img(BRAND_DARK, t("home_alt"), height=26, lazy=False)}</picture></a>
-    {lang_switch.replace('class="lang-switch"', 'class="lang-switch lang-switch--header"')}
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="{e(t("menu_open"))}" data-label-open="{e(t("menu_open"))}" data-label-close="{e(t("menu_close"))}">{icon("menu", "icon")}{icon("close", "icon")}</button>
     <nav class="site-nav" id="site-nav" aria-label="{e(t("nav_label"))}">
       {nav}
-      {lang_switch}
       <a class="button button--sm" href="contact.html"{contact_cur}>{e(t("nav_contact"))}</a>
     </nav>
+    {lang_menu}
   </div>
 </header>
 <main id="main">
@@ -486,7 +493,8 @@ def layout(slug, title, description, body):
     </div>
     <div class="footer-bottom">
       <span>© {YEAR} {e(C.SITE["name"])}</span>
-      <span><a href="privacy.html">{e(t("privacy"))}</a><a href="terms.html">{e(t("terms"))}</a>{lang_switch}</span>
+      <span class="footer-legal"><a href="privacy.html">{e(t("privacy"))}</a><a href="terms.html">{e(t("terms"))}</a></span>
+      <ul class="footer-langs" aria-label="{e(t("language"))}">{lang_links()}</ul>
     </div>
   </div>
 </footer>
@@ -651,7 +659,7 @@ def build_about():
         t('partnership_eyebrow'), t('partnership_heading'),
         f'<p class="body-lg">{e(t("partnership_body"))}</p>'
         f'<figure class="photo">{img(C.PARTNER["photo"], C.PARTNER["photo_alt"])}'
-        f'<figcaption>{e(C.PARTNER["photo_alt"])}.</figcaption></figure>'
+        f'<figcaption>{e(C.PARTNER["photo_alt"])}{e(t("period"))}</figcaption></figure>'
         f'<div class="panel"><p class="eyebrow">{e(t("partner_eyebrow"))}</p>'
         f'<p class="panel__title">{e(C.PARTNER["name"])}</p>'
         f'<p>{e(t("partner_location"))}</p>'
@@ -733,14 +741,14 @@ def build_contact():
   {field('f-message', t('f_message'), f'<textarea id="f-message" name="message" rows="6" minlength="20" required {described("f-message", True)} data-required="{e(t("f_message_req"))}"></textarea>', True, hint=t('f_message_hint'))}
   <div class="form-status" id="form-status" role="status" aria-live="polite"></div>
   <button class="button" type="submit">{e(t("submit"))}</button>
-  <p class="small">{e(t("form_note"))} <a href="privacy.html">{e(t("privacy"))}</a>.</p>
+  <p class="small">{e(t("form_note"))} <a href="privacy.html">{e(t("privacy"))}</a>{e(t("form_note_end"))}</p>
 </form>'''
 
     details = '<dl class="contact-list">' + ''.join(
         f'<div><dt>{e(t("email_label"))}</dt><dd>{mailto(m)}</dd></div>' for m in C.SITE['emails']) + ''.join(
         f'<div><dt>{e(t("phone_label"))}</dt><dd>{tel(p, n)}</dd></div>' for p, n in C.SITE['phones']) + ''.join(
         channel_row(ch) for ch in channels()) + (
-        f'<div><dt>{e(t("office_label"))}</dt><dd>{"، ".join(e(x) for x in C.SITE["address"]) if C is AR else ", ".join(e(x) for x in C.SITE["address"])}'
+        f'<div><dt>{e(t("office_label"))}</dt><dd>{e(C.LANG["sep"]).join(e(x) for x in C.SITE["address"])}'
         f'<span class="dd-link">{link_arrow(C.SITE["maps"], t("maps"), external=True)}</span></dd></div>') + (
         f'<div><dt>{e(t("social_label"))}</dt><dd class="dd-links">' + ''.join(link_arrow(u, n, external=True) for n, u in C.SITE['social'])
         + '</dd></div>' if C.SITE['social'] else '') + '</dl>'
@@ -774,7 +782,7 @@ def build_legal():
     page('terms', t('terms'), t('terms_desc'), terms)
 
     pr = C.PRIVACY
-    contact = f'<p>{e(t("privacy_contact"))} {mailto(pr["contact"])}.</p>'
+    contact = f'<p>{e(t("privacy_contact"))} {mailto(pr["contact"])}{e(t("period"))}</p>'
     privacy = (page_hero(t('legal_eyebrow'), t('privacy'), t('privacy_lead'))
                + section(t('privacy_eyebrow'), t('privacy_heading'),
                          updated + ''.join(f'<p>{e(x)}</p>' for x in pr['paragraphs']) + contact + f'<p>{e(pr["changes"])}</p>'))
@@ -783,11 +791,12 @@ def build_legal():
 
 def build_404():
     """One 404 page at the site root (GitHub Pages serves only that one), in both languages."""
-    arabic = (f'<p class="nf-alt" lang="ar" dir="rtl">{e(AR.UI["nf_title"])} {e(AR.UI["nf_lead"])} '
-              f'<a href="{AR.LANG["path"]}index.html">{e(AR.UI["nf_home"])}</a></p>')
+    others = ''.join(
+        f'<p class="nf-alt" lang="{m.LANG["code"]}" dir="{m.LANG["dir"]}">{e(m.UI["nf_title"])} {e(m.UI["nf_lead"])} '
+        f'<a href="{m.LANG["path"]}index.html">{e(m.UI["nf_home"])}</a></p>' for m in LANGS if m is not EN)
     body = page_hero(t('nf_eyebrow'), t('nf_title'), t('nf_lead'),
                      actions=button('index.html', t('nf_home')) + link_arrow('contact.html', t('nf_contact')),
-                     extra=arabic)
+                     extra=others)
     page('404', t('nf_title').rstrip('.'), t('nf_lead'), body)
 
 
@@ -891,8 +900,10 @@ def check(out):
             errors.append(f'{name}: {c.empty_headings} empty heading(s)')
         if c.invisible:
             errors.append(f'{name}: {c.invisible} invisible character(s)')
-        if name.parts[0] == 'ar' and c.html_lang != 'ar':
-            errors.append(f'{name}: Arabic page without lang="ar"')
+        folder = name.parts[0] + '/' if len(name.parts) > 1 else ''
+        expected = next((m.LANG['code'] for m in LANGS if m.LANG['path'] == folder), None)
+        if expected and name.name not in [f'{old}.html' for old in REDIRECTS] and c.html_lang != expected:
+            errors.append(f'{name}: expected lang="{expected}", found "{c.html_lang}"')
         dupes = {i for i in c.ids if c.ids.count(i) > 1}
         if dupes:
             errors.append(f'{name}: duplicate ids {sorted(dupes)}')

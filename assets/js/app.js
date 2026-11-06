@@ -27,6 +27,24 @@
     window.matchMedia('(min-width: 761px)').addEventListener('change', (e) => { if (e.matches) setOpen(false); });
   }
 
+  /* ---------- language menu (a <details> element; JS only adds closing behaviour) ---------- */
+  const langMenu = $('.lang-menu');
+  if (langMenu) {
+    document.addEventListener('click', (e) => { if (langMenu.open && !langMenu.contains(e.target)) langMenu.open = false; });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && langMenu.open) { langMenu.open = false; $('summary', langMenu).focus(); }
+    });
+    langMenu.addEventListener('toggle', () => {
+      // Only one menu open at a time on phones: close the navigation menu directly.
+      if (langMenu.open && toggle && toggle.getAttribute('aria-expanded') === 'true') {
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-label', toggle.dataset.labelOpen);
+        document.documentElement.classList.remove('menu-open');
+      }
+    });
+    if (toggle) toggle.addEventListener('click', () => { langMenu.open = false; });
+  }
+
   /* ---------- copy buttons (WeChat ID) ---------- */
   $$('[data-copy]').forEach((button) => {
     const label = button.textContent;
