@@ -413,6 +413,10 @@ UI = dict(
     privacy_desc='كيف تتعامل Elevate Arabia مع البيانات الشخصية، وكيف تتواصل معها بشأنها.',
     privacy_eyebrow='الخصوصية', privacy_heading='بياناتك الشخصية.',
     privacy_contact='للأسئلة أو الطلبات المتعلقة ببياناتك الشخصية:',
+    messaging='راسلنا', whatsapp='واتساب', whatsapp_action='تحدّث معنا عبر واتساب',
+    whatsapp_text='مرحباً Elevate Arabia، أودّ مناقشة مشروع.',
+    wechat='وي تشات', wechat_hint='ابحث عن هذا المعرّف في وي تشات لإضافتنا.', copy='نسخ المعرّف', copied='تم النسخ',
+    wechat_qr_alt='رمز QR لحساب Elevate Arabia على وي تشات', line='لاين', line_action='أضفنا على لاين',
     nf_eyebrow='خطأ 404', nf_title='الصفحة غير موجودة.', nf_lead='الصفحة التي تبحث عنها غير موجودة أو تم نقلها.',
     nf_home='العودة إلى الرئيسية', nf_contact='تواصل معنا',
 )

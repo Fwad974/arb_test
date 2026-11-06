@@ -40,6 +40,11 @@ jobs:
           # Pages URL, or your custom domain once one is set in Settings → Pages.
           SITE_URL: ${{ steps.pages.outputs.base_url }}
           INDEXABLE: ${{ vars.INDEXABLE || 'false' }}
+          # Optional overrides for site.env (repository variables with these names).
+          WHATSAPP_NUMBER: ${{ vars.WHATSAPP_NUMBER }}
+          WECHAT_ID: ${{ vars.WECHAT_ID }}
+          WECHAT_QR: ${{ vars.WECHAT_QR }}
+          LINE_ID: ${{ vars.LINE_ID }}
 
       - name: Upload site
         if: github.event_name != 'pull_request'

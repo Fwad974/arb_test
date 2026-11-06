@@ -27,6 +27,25 @@
     window.matchMedia('(min-width: 761px)').addEventListener('change', (e) => { if (e.matches) setOpen(false); });
   }
 
+  /* ---------- copy buttons (WeChat ID) ---------- */
+  $$('[data-copy]').forEach((button) => {
+    const label = button.textContent;
+    button.hidden = false;
+    button.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(button.dataset.copy);
+      } catch (err) {
+        // No clipboard access: select the ID so it can be copied by hand.
+        const code = button.parentElement.querySelector('code');
+        if (code) { const range = document.createRange(); range.selectNodeContents(code); getSelection().removeAllRanges(); getSelection().addRange(range); }
+        return;
+      }
+      button.textContent = button.dataset.copied;
+      button.setAttribute('aria-live', 'polite');
+      setTimeout(() => { button.textContent = label; }, 2000);
+    });
+  });
+
   /* ---------- enquiry form → pre-filled email ---------- */
   const form = $('#enquiry-form');
   if (!form) return;
