@@ -233,7 +233,7 @@ PARTNER = dict(
 # CLIENTS_NETWORK is the live "Clients / Network & Partners" strip.
 CLIENTS_NETWORK = [
     ('blue-camel', 'Blue Camel'), ('cellular-therapeutics-center', 'Cellular Therapeutics Center'),
-    ('saudi-ai', 'Saudi AI'), ('saudi-nih', 'Saudi NIH'), ('igene', 'iGene'),
+    ('saudi-ai', 'Saudi AI'), ('saudi-nih', 'Saudi NIH'), ('fsgene', 'FSGene'),
     ('thuraya-healthcare', 'Thuraya Healthcare'), ('ilf', 'ILF'), ('al-bakri', 'Al Bakri'), ('neem', 'Neem'),
     ('omixcube', 'OMIXCUBE'), ('skylight', 'Skylight'),
     ('hijaz-green', 'Hijaz Green'), ('xgenome', 'XGenome Biotech Company'),
@@ -475,6 +475,11 @@ UI = dict(
     privacy_desc='How Elevate Arabia handles personal data, and how to contact us about it.',
     privacy_eyebrow='Privacy', privacy_heading='Your personal data.',
     privacy_contact='Questions or requests about your personal data:',
+    # messaging apps (numbers and IDs live in site.env)
+    messaging='Message us', whatsapp='WhatsApp', whatsapp_action='Chat on WhatsApp',
+    whatsapp_text='Hello Elevate Arabia, I would like to discuss a project.',
+    wechat='WeChat', wechat_hint='Search for this ID in WeChat to add us.', copy='Copy ID', copied='Copied',
+    wechat_qr_alt='WeChat QR code for Elevate Arabia', line='LINE', line_action='Add us on LINE',
     # 404
     nf_eyebrow='Error 404', nf_title='Page not found.', nf_lead='The page you are looking for does not exist or has moved.',
     nf_home='Back to home', nf_contact='Contact us',

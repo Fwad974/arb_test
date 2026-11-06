@@ -39,6 +39,7 @@ Open http://localhost:8000. Rebuild after each edit with `python3 build.py`.
 
 | What | Where |
 |---|---|
+| WhatsApp number, WeChat ID and QR code, LINE Official Account | `site.env` |
 | English copy: services, sectors, team, contact details, social links, client logos, legal text, interface text | `content.py` |
 | Arabic copy (same structure, text only) | `content_ar.py` |
 | Logos, team photos, brand files | `assets/images/` (WebP) |
@@ -60,6 +61,24 @@ Switches in `content.py`:
   then appear on the About page, labelled as Hirayama Holdings' clients.
 - `SITE['social']`: add real profile URLs to show social links; nothing is shown until you do.
 - `LEGAL_UPDATED`: the "Last updated" date on the Terms and Privacy pages. Change it whenever the legal text changes.
+
+## Messaging apps (`site.env`)
+
+WhatsApp, WeChat and LINE appear on the Contact page and in the footer, and WhatsApp also
+appears on the Contact page's first screen. Their details live in `site.env`, one per line:
+
+| Setting | What to put | What visitors get |
+|---|---|---|
+| `WHATSAPP_NUMBER` | International number, e.g. `+966533337712` | A WhatsApp chat with a greeting already typed, in the page's language |
+| `WECHAT_ID` | The WeChat ID | The ID with a "Copy ID" button (WeChat has no web link that opens a chat) |
+| `WECHAT_QR` | Optional: file name of a QR code image in `assets/images/contact/` | The QR code under the ID |
+| `LINE_ID` | The LINE Official Account ID, e.g. `@elevatearabia`, or a full `https://line.me/...` link | An "Add us on LINE" link |
+
+- Leave a value empty to hide that app.
+- Add `# placeholder` after a value and every build reminds you to replace it.
+- A GitHub repository variable with the same name (Settings → Secrets and variables → Actions →
+  Variables) overrides the file, so the number can change without editing code.
+- The build checks each value and stops with a clear message if one is malformed.
 
 ## Deploy to GitHub Pages
 

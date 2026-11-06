@@ -214,6 +214,24 @@ function serve() {
   const arHref = await page.getAttribute('#form-status a', 'href');
   if (!arHref || !decodeURIComponent(arHref).includes('subject=استفسار من الموقع: رأس المال')) fail(`Arabic mailto wrong: ${arHref && decodeURIComponent(arHref).slice(0, 90)}`);
 
+  // 6b. Messaging apps from site.env: contact page links, footer row, WeChat copy button
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, permissions: ['clipboard-read', 'clipboard-write'] });
+  const cp = await ctx.newPage();
+  for (const name of ['contact.html', 'ar/contact.html']) {
+    await cp.goto(base + name);
+    const wa = await cp.getAttribute('.contact-list a[href^="https://wa.me/"]', 'href').catch(() => null);
+    if (!wa || !/^https:\/\/wa\.me\/\d{8,15}\?text=/.test(wa)) fail(`${name}: WhatsApp link missing or malformed (${wa})`);
+    if (!(await cp.locator('.contact-list a[href^="https://line.me/R/ti/p/"]').count())) fail(`${name}: LINE link missing`);
+    if ((await cp.locator('.footer-apps li').count()) !== 3) fail(`${name}: footer should list 3 messaging apps`);
+    if (!(await cp.locator('.hero a[href^="https://wa.me/"]').count())) fail(`${name}: WhatsApp link missing from the first screen`);
+  }
+  await cp.goto(base + 'contact.html');
+  const wechatId = (await cp.textContent('#wechat code')).trim();
+  await cp.click('#wechat .copy-button');
+  if ((await cp.evaluate(() => navigator.clipboard.readText())) !== wechatId) fail('WeChat copy button did not copy the ID');
+  if ((await cp.textContent('#wechat .copy-button')).trim() !== 'Copied') fail('WeChat copy button gave no feedback');
+  await ctx.close();
+
   // 7. Old Wix addresses redirect to the new pages
   for (const [old, now] of [['home-1.html', 'services.html'], ['blank-3.html', 'advisory.html'], ['terms-and-coniditions.html', 'terms.html']]) {
     await page.goto(base + old);

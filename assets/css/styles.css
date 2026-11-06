@@ -351,6 +351,25 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 .photo img { width: 100%; height: auto; border-radius: var(--radius); background: var(--surface); }
 .photo figcaption { margin-top: 10px; color: var(--muted); font-size: 0.875rem; }
 .dd-link { display: block; margin-top: 6px; font-size: 0.9375rem; }
+
+/* ---------- messaging apps ---------- */
+.icon--brand { width: 18px; height: 18px; flex: none; }
+.contact-list dt { display: flex; align-items: center; gap: 8px; }
+.contact-list dt .icon--brand { width: 16px; height: 16px; color: var(--ink); }
+.dd-note { display: block; color: var(--muted); font-size: 0.875rem; font-weight: 400; }
+[dir="rtl"] .dd-note[dir="ltr"] { text-align: right; } /* numbers and handles read left-to-right but align with the Arabic column */
+.channel-id { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 4px; }
+.channel-id code { font: 600 1rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink); }
+.copy-button {
+  min-height: 36px; padding: 6px 14px; border: 1px solid var(--field); border-radius: 999px;
+  background: transparent; color: var(--ink); font-size: 0.875rem; font-weight: 600; cursor: pointer;
+}
+.copy-button:hover { border-color: var(--ink); }
+.wechat-qr { margin-top: 12px; padding: 8px; border-radius: 10px; background: #fff; } /* QR codes need a light background in both themes */
+.hero .link-arrow .icon--brand { color: var(--ink); }
+.footer-apps-title { margin: 20px 0 8px; color: var(--on-dark-muted); font-size: 0.875rem; }
+.footer-apps a { display: inline-flex; align-items: center; gap: 8px; }
+.footer-apps .icon--brand { width: 16px; height: 16px; color: var(--on-dark-muted); }
 .dd-links { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .footer-map { margin-top: 10px; }
 .footer-map .link-arrow { font-size: 0.875rem; }

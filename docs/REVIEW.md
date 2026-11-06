@@ -62,6 +62,7 @@ https://www.elevatearabia.com/ (fetched 4 November 2026), and what changed.
 - **"Up to 40% faster"** is attributed to Quadratech in the FAQ. Confirm the wording and the rights to use the Quadratech, Quadraframe and Quadracrete names.
 - **Team.** Confirm names, roles and permission to publish them.
 - **Partnership.** Confirm the Hirayama Holdings wording and photo caption.
+- **WeChat and LINE.** `site.env` holds random placeholder IDs. Replace them with the real WeChat ID (and QR code, if wanted) and the LINE Official Account ID, and confirm WhatsApp is active on +966 53 333 7712.
 - **Global logos and the 1,500+ figure.** These appear to describe the partner Hirayama Holdings, so both are now hidden (`SHOW_PARTNER_CLIENTS = False`). Show the logos only with written permission, labelled as the partner's clients.
 - **Network & partners logos.** Confirm the names used as alt text, especially "Al Bakri" (read from the Arabic logo).
 - **Social profiles.** Add the real URLs to `SITE.social` in `content.py`; nothing is shown until you do.

@@ -22,7 +22,7 @@ from datetime import date
 from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import content as EN
 import content_ar as AR
@@ -33,6 +33,33 @@ OUT = ROOT / 'dist'
 SITE_URL = os.environ.get('SITE_URL', '').strip().rstrip('/')
 INDEXABLE = os.environ.get('INDEXABLE', '').strip().lower() in ('1', 'true', 'yes')
 YEAR = date.today().year
+
+
+def load_site_env(path):
+    """Contact-channel settings from site.env. A non-empty environment variable with the same
+    name (e.g. a GitHub Actions repository variable) overrides the file."""
+    values, placeholders = {}, set()
+    if path.exists():
+        for raw in path.read_text(encoding='utf-8').splitlines():
+            line = raw.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, _, rest = line.partition('=')
+            key = key.strip()
+            parts = re.split(r'\s+#', rest, maxsplit=1)
+            values[key] = parts[0].strip().strip('"\'')
+            if len(parts) > 1 and 'placeholder' in parts[1].lower():
+                placeholders.add(key)
+    for key in ('WHATSAPP_NUMBER', 'WECHAT_ID', 'WECHAT_QR', 'LINE_ID'):
+        override = os.environ.get(key, '').strip()
+        if override:
+            values[key] = override
+            placeholders.discard(key)
+        values.setdefault(key, '')
+    return values, placeholders
+
+
+SITE_ENV, ENV_PLACEHOLDERS = load_site_env(ROOT / 'site.env')
 
 # The language being built. set_language() switches these.
 C = EN          # content module for this language
@@ -87,10 +114,52 @@ def icon(name, cls='icon'):
             f'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">{ICONS[name]}</svg>')
 
 
-def link_arrow(href, label, external=False):
+BRAND_ICONS = {name: re.search(r'<path d="([^"]+)"', (ROOT / 'assets' / 'icons' / f'{name}.svg').read_text()).group(1)
+               for name in ('whatsapp', 'wechat', 'line')}
+
+
+def brand_icon(name):
+    return (f'<svg class="icon icon--brand" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">'
+            f'<path d="{BRAND_ICONS[name]}"/></svg>')
+
+
+def channels():
+    """Messaging apps configured in site.env, validated, in display order."""
+    out = []
+    digits = re.sub(r'\D', '', SITE_ENV['WHATSAPP_NUMBER'])
+    if digits:
+        if not 8 <= len(digits) <= 15:
+            raise ValueError('site.env: WHATSAPP_NUMBER must be a full international number, e.g. +966533337712')
+        shown = next((label for label, number in C.SITE['phones'] if re.sub(r'\D', '', number) == digits), '+' + digits)
+        out.append(dict(key='whatsapp', name=t('whatsapp'), action=t('whatsapp_action'), value=shown,
+                        href=f'https://wa.me/{digits}?text={quote(t("whatsapp_text"))}'))
+    wechat = SITE_ENV['WECHAT_ID']
+    if wechat:
+        if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{5,19}', wechat):
+            raise ValueError('site.env: WECHAT_ID must be 6-20 letters, digits, _ or -, starting with a letter')
+        qr = SITE_ENV['WECHAT_QR']
+        if qr and not (ROOT / 'assets' / 'images' / 'contact' / qr).exists():
+            raise ValueError(f'site.env: WECHAT_QR file assets/images/contact/{qr} not found')
+        out.append(dict(key='wechat', name=t('wechat'), value=wechat, qr=qr, href='contact.html#wechat'))
+    line = SITE_ENV['LINE_ID']
+    if line:
+        if line.startswith('https://line.me/'):
+            href, shown = line, line
+        else:
+            handle = line.lstrip('@')
+            if not re.fullmatch(r'[A-Za-z0-9._-]{3,20}', handle):
+                raise ValueError('site.env: LINE_ID must be an Official Account ID such as @elevatearabia')
+            href, shown = f'https://line.me/R/ti/p/%40{handle}', '@' + handle
+        out.append(dict(key='line', name=t('line'), action=t('line_action'), value=shown, href=href))
+    return out
+
+
+def link_arrow(href, label, external=False, brand=None):
     attrs = ' target="_blank" rel="noopener"' if external else ''
     sr = f'<span class="visually-hidden">{e(t("new_tab"))}</span>' if external else ''
-    return f'<a class="link-arrow" href="{e(href)}"{attrs}>{e(label)}{sr}{icon("external" if external else "arrow")}</a>'
+    lead = brand_icon(brand) if brand else ''
+    return (f'<a class="link-arrow" href="{e(href)}"{attrs}>{lead}{e(label)}{sr}'
+            f'{icon("external" if external else "arrow")}</a>')
 
 
 def button(href, label):
@@ -339,6 +408,15 @@ def layout(slug, title, description, body):
     service_links = ''.join(f'<li><a href="{a["href"]}">{e(a["label"])}</a></li>' for a in AREAS)
     emails = ''.join(f'<li>{mailto(m)}</li>' for m in C.SITE['emails'])
     phones = ''.join(f'<li>{tel(p, n)}</li>' for p, n in C.SITE['phones'])
+    apps = ''
+    if channels():
+        items = []
+        for ch in channels():
+            external = ch['key'] != 'wechat'
+            attrs = ' target="_blank" rel="noopener"' if external else ''
+            sr = f'<span class="visually-hidden">{e(t("new_tab"))}</span>' if external else ''
+            items.append(f'<li><a href="{e(ch["href"])}"{attrs}>{brand_icon(ch["key"])}{e(ch["name"])}{sr}</a></li>')
+        apps = f'<p class="footer-apps-title">{e(t("messaging"))}</p><ul class="footer-apps">{"".join(items)}</ul>'
     social = ''
     if C.SITE['social']:
         social = (f'<div><h2 class="footer-title">{e(t("footer_follow"))}</h2><ul>' + ''.join(
@@ -400,6 +478,7 @@ def layout(slug, title, description, body):
       <div>
         <h2 class="footer-title">{e(t("footer_contact"))}</h2>
         <ul>{emails}{phones}</ul>
+        {apps}
         <p class="footer-address">{"<br>".join(e(x) for x in C.SITE["address"])}</p>
         <p class="footer-map">{link_arrow(C.SITE["maps"], t("maps"), external=True)}</p>
       </div>
@@ -605,7 +684,20 @@ def build_about():
 
 
 def build_contact():
-    hero = page_hero(t('nav_contact'), t('contact_hero_title'), t('contact_hero_lead'))
+    wa = next((ch for ch in channels() if ch['key'] == 'whatsapp'), None)
+    hero = page_hero(t('nav_contact'), t('contact_hero_title'), t('contact_hero_lead'),
+                     actions=link_arrow(wa['href'], wa['action'], external=True, brand='whatsapp') if wa else '')
+
+    def channel_row(ch):
+        dt = f'<dt>{brand_icon(ch["key"])}{e(ch["name"])}</dt>'
+        if ch['key'] == 'wechat':
+            qr = (f'<img class="wechat-qr" src="{asset("images/contact/" + ch["qr"])}" alt="{e(t("wechat_qr_alt"))}" '
+                  f'width="160" height="160" loading="lazy">' if ch['qr'] else '')
+            return (f'<div id="wechat">{dt}<dd><span class="channel-id"><code dir="ltr">{e(ch["value"])}</code>'
+                    f'<button class="copy-button" type="button" data-copy="{e(ch["value"])}" data-copied="{e(t("copied"))}" hidden>'
+                    f'{e(t("copy"))}</button></span><span class="dd-note">{e(t("wechat_hint"))}</span>{qr}</dd></div>')
+        return (f'<div>{dt}<dd>{link_arrow(ch["href"], ch["action"], external=True)}'
+                f'<span class="dd-note" dir="ltr">{e(ch["value"])}</span></dd></div>')
 
     options = [(s['slug'], s.get('option', s['label'])) for s in C.SERVICES]
     options += [('life-sciences', C.LIFE_SCIENCES['label']), ('other', t('f_other'))]
@@ -646,7 +738,8 @@ def build_contact():
 
     details = '<dl class="contact-list">' + ''.join(
         f'<div><dt>{e(t("email_label"))}</dt><dd>{mailto(m)}</dd></div>' for m in C.SITE['emails']) + ''.join(
-        f'<div><dt>{e(t("phone_label"))}</dt><dd>{tel(p, n)}</dd></div>' for p, n in C.SITE['phones']) + (
+        f'<div><dt>{e(t("phone_label"))}</dt><dd>{tel(p, n)}</dd></div>' for p, n in C.SITE['phones']) + ''.join(
+        channel_row(ch) for ch in channels()) + (
         f'<div><dt>{e(t("office_label"))}</dt><dd>{"، ".join(e(x) for x in C.SITE["address"]) if C is AR else ", ".join(e(x) for x in C.SITE["address"])}'
         f'<span class="dd-link">{link_arrow(C.SITE["maps"], t("maps"), external=True)}</span></dd></div>') + (
         f'<div><dt>{e(t("social_label"))}</dt><dd class="dd-links">' + ''.join(link_arrow(u, n, external=True) for n, u in C.SITE['social'])
@@ -843,6 +936,9 @@ def main():
     if errors:
         print('Build checks failed:', *errors, sep='\n  ', file=sys.stderr)
         sys.exit(1)
+    if ENV_PLACEHOLDERS:
+        print(f'Note: site.env still has placeholder values for {", ".join(sorted(ENV_PLACEHOLDERS))}; '
+              'replace them before sharing the site.', file=sys.stderr)
     counts = ', '.join(f'{len(v)} {k}' for k, v in built.items())
     print(f'Built {counts} pages into {OUT.relative_to(ROOT)}/ '
           f'({"indexable" if INDEXABLE else "noindex"}{", " + SITE_URL if SITE_URL else ""}). Links OK.')
