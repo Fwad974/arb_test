@@ -9,11 +9,10 @@ A native-speaker review is needed before launch (see docs/review-status.md, #16)
 People's names and company names stay in Latin script as on the live site; add Arabic
 spellings here if the company wants them.
 """
-import copy
-
 import content as en
+from translation import complete
 
-LANG = dict(code='ar', dir='rtl', locale='ar_SA', path='ar/', name='العربية')
+LANG = dict(code='ar', dir='rtl', locale='ar_SA', path='ar/', name='العربية', short='عربي', sep='، ')
 
 SITE = dict(
     en.SITE,
@@ -312,7 +311,7 @@ UI = dict(
     breadcrumb_label='مسار التنقل', home='الرئيسية',
     footer_services='الخدمات', footer_company='الشركة', footer_contact='التواصل', footer_follow='تابعنا',
     maps='افتح في خرائط Google', privacy='سياسة الخصوصية', terms='الشروط والأحكام',
-    lang_switch_label='اقرأ هذه الصفحة بالعربية',
+    language='اللغة', period='.', form_note_end='.',
     home_title='الاستراتيجية ورأس المال ودخول السوق السعودي',
     home_desc='تساعد Elevate Arabia الشركات والمؤسسين والمستثمرين على هيكلة عملياتهم وتمويلها وحوكمتها وتوسيعها في المملكة العربية السعودية.',
     hero_eyebrow='الاستراتيجية · رأس المال · دخول السوق',
@@ -423,46 +422,4 @@ UI = dict(
 
 # --------------------------------------------------------------------------- merge with content.py
 
-_TEXT_KEYS = ('label', 'option', 'short', 'tag', 'title', 'intro', 'overview', 'needs', 'challenges', 'deliverables', 'faq')
-
-
-def _translate(item, tr, where):
-    out = copy.deepcopy(item)
-    for key in _TEXT_KEYS:
-        if key in item:
-            if key not in tr:
-                raise KeyError(f'content_ar: missing "{key}" for {where}')
-            if isinstance(item[key], list) and len(item[key]) != len(tr[key]):
-                raise ValueError(f'content_ar: "{key}" for {where} has {len(tr[key])} items, English has {len(item[key])}')
-            out[key] = tr[key]
-    if item.get('areas'):
-        out['areas'] = []
-        for a in item['areas']:
-            t = tr['areas'][a['id']]
-            if len(t['items']) != len(a['items']):
-                raise ValueError(f'content_ar: area {a["id"]} item count differs')
-            out['areas'].append(dict(a, **t))
-        if 'needs' in item:
-            out['needs'] = [x for a in out['areas'] for x in a['items']]
-    return out
-
-
-SERVICES = [_translate(s, _SERVICES[s['slug']], s['slug']) for s in en.SERVICES]
-LIFE_SCIENCES = _translate(en.LIFE_SCIENCES, _LIFE_SCIENCES, 'life-sciences')
-SECTORS = [dict(s, **_SECTORS[s['slug']]) for s in en.SECTORS]
-for _s in SECTORS:
-    if _s['link'] and 'link_label' not in _SECTORS[_s['slug']]:
-        raise KeyError(f'content_ar: missing link_label for sector {_s["slug"]}')
-TEAM_SAUDI = [(n, _ROLES[n], ph) for n, _r, ph in en.TEAM_SAUDI]
-TEAM_INTERNATIONAL = [(n, _ROLES[n], ph) for n, _r, ph in en.TEAM_INTERNATIONAL]
-
-for _name, _ar, _en in [('VALUES', VALUES, en.VALUES), ('STEPS', STEPS, en.STEPS), ('STATS', STATS, en.STATS),
-                         ('TERMS.clauses', TERMS['clauses'], en.TERMS['clauses']),
-                         ('TERMS.disclaimer', TERMS['disclaimer'], en.TERMS['disclaimer']),
-                         ('PRIVACY.paragraphs', PRIVACY['paragraphs'], en.PRIVACY['paragraphs'])]:
-    if len(_ar) != len(_en):
-        raise ValueError(f'content_ar: {_name} has {len(_ar)} items, English has {len(_en)}')
-_missing = set(en.UI) - set(UI)
-_extra = set(UI) - set(en.UI)
-if _missing or _extra:
-    raise KeyError(f'content_ar: UI keys missing {sorted(_missing)} / extra {sorted(_extra)}')
+complete(globals())

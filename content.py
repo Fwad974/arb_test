@@ -361,7 +361,7 @@ PRIVACY = dict(
 # content_ar.py has the same keys in Arabic; the build fails if one is missing.
 # Placeholders in {braces} are filled in by the templates or by app.js.
 # ---------------------------------------------------------------------------
-LANG = dict(code='en', dir='ltr', locale='en_US', path='', name='English')
+LANG = dict(code='en', dir='ltr', locale='en_US', path='', name='English', short='EN', sep=', ')
 
 UI = dict(
     # layout
@@ -370,7 +370,7 @@ UI = dict(
     home_alt='Elevate Arabia home', new_tab=' (opens in a new tab)', breadcrumb_label='Breadcrumb', home='Home',
     footer_services='Services', footer_company='Company', footer_contact='Contact', footer_follow='Follow',
     maps='Open in Google Maps', privacy='Privacy Policy', terms='Terms & Conditions',
-    lang_switch_label='Read this page in English',
+    language='Language', period='.', form_note_end='.',
     # home
     home_title='Strategy, capital and Saudi market entry',
     home_desc='Elevate Arabia helps businesses, founders and investors structure, finance, govern and scale their operations in Saudi Arabia.',
