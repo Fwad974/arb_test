@@ -237,6 +237,8 @@ CLIENTS_NETWORK = [
     ('thuraya-healthcare', 'Thuraya Healthcare'), ('ilf', 'ILF'), ('al-bakri', 'Al Bakri'), ('neem', 'Neem'),
     ('omixcube', 'OMIXCUBE'), ('skylight', 'Skylight'),
     ('hijaz-green', 'Hijaz Green'), ('xgenome', 'XGenome Biotech Company'),
+    # An optional third value links the logo to the company's website.
+    ('flopexa', 'Flopexa', 'https://www.flopexa.com/'),
 ]
 # CLIENTS_GLOBAL is the live logo ticker shown under the "1,500+ companies" claim.
 # Both the logos and the 1,500+ figure appear to describe the partner Hirayama

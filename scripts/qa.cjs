@@ -258,6 +258,12 @@ function serve() {
     if ((await cp.locator('.footer-apps li').count()) !== 3) fail(`${name}: footer should list 3 messaging apps`);
     if (!(await cp.locator('.hero a[href^="https://wa.me/"]').count())) fail(`${name}: WhatsApp link missing from the first screen`);
   }
+  // Linked partner logos (third value in CLIENTS_NETWORK) open the partner's site in a new tab.
+  for (const name of ['index.html', 'ar/index.html', 'zh/index.html', 'ja/index.html']) {
+    await cp.goto(base + name);
+    const link = cp.locator('#clients a[href="https://www.flopexa.com/"]');
+    if ((await link.count()) !== 1 || (await link.getAttribute('target')) !== '_blank') fail(`${name}: Flopexa logo link missing`);
+  }
   await cp.goto(base + 'contact.html');
   const wechatId = (await cp.textContent('#wechat code')).trim();
   await cp.click('#wechat .copy-button');
