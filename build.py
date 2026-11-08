@@ -238,29 +238,29 @@ def _logo_part(pattern):
     return found.group(1)
 
 
-_letters = _logo_part(r'<path id="logo-letters"[^>]*?\sd="([^"]+)"')
+_letters = re.findall(r'<path data-letter="[^"]*" d="([^"]+)"/>', LOGO_SVG)
+if len(_letters) != 7:
+    raise ValueError('elevate-wordmark.svg: expected 7 letter paths (E L E V A T E) in <g id="logo-letters">')
 _kanji = _logo_part(r'<path id="logo-kanji"[^>]*?\sd="([^"]+)"')
 _bar = _logo_part(r'(<line [^>]+/>)').replace('<line ', '<line class="logo__line" ', 1)
-# The light that runs up the red bar: the same line, white, narrower, and drawn as one short dash
-# (styles.css moves the dash). One copy plays on page load, the other on hover.
-_ends = ' '.join(k + '="' + _logo_part(r'<line[^>]*\s' + k + r'="([-0-9.]+)"') + '"' for k in ('x1', 'y1', 'x2', 'y2'))
-_glint_width = round(float(_logo_part(r'<line [^>]*stroke-width="([0-9.]+)"')) * 0.5, 1)
-_glints = ''.join(f'<line class="logo__glint logo__glint--{when}" {_ends} stroke="#fff" stroke-width="{_glint_width}" '
-                  f'stroke-linecap="round" pathLength="1"/>' for when in ('load', 'hover'))
 if 'color="#0f2137"' not in LOGO_SVG:
     raise ValueError('elevate-wordmark.svg: the root <svg> needs color="#0f2137" (the footer copy swaps it)')
+# --n numbers the letters, so styles.css can bring them in one after another.
 LOGO_INLINE = (f'<svg class="logo" viewBox="{LOGO_VIEWBOX}" aria-hidden="true" focusable="false">'
-               f'<path fill="currentColor" d="{_letters}"/><g class="logo__bar">{_bar}{_glints}'
-               f'<path class="logo__kanji" fill="#fff" d="{_kanji}"/></g></svg>')
+               f'<g fill="currentColor">'
+               + ''.join(f'<path class="logo__letter" style="--n:{i}" d="{d}"/>' for i, d in enumerate(_letters))
+               + f'</g><g class="logo__bar">{_bar}<path class="logo__kanji" fill="#fff" d="{_kanji}"/></g></svg>')
 
 # Runs before first paint. Marks JS as available; turns on the motion layer (styles.css,
 # "motion") only when the browser can watch scrolling and the visitor has not asked for reduced
-# motion; and plays the logo's intro only when the visitor arrives from another site or types the
-# address, not on every page inside the site. Reading the referrer stores nothing on the device.
+# motion; and plays the logo's intro on every home page load (data-home) and whenever a visitor
+# arrives from another site or types the address, but not on other pages inside the site.
+# Reading the referrer stores nothing on the visitor's device.
 HEAD_SCRIPT = ("(function(d){d.classList.add('js');"
                "if('IntersectionObserver'in window&&matchMedia('(prefers-reduced-motion: no-preference)').matches)"
                "d.classList.add('motion');"
-               "try{var r=document.referrer;if(!r||new URL(r).host!==location.host)d.classList.add('logo-intro')}catch(x){}})"
+               "try{var r=document.referrer;if(d.hasAttribute('data-home')||!r||new URL(r).host!==location.host)"
+               "d.classList.add('logo-intro')}catch(x){}})"
                "(document.documentElement)")
 
 
@@ -485,7 +485,7 @@ def layout(slug, title, description, body):
             f'<li>{link_arrow(u, n, external=True)}</li>' for n, u in C.SITE['social']) + '</ul></div>')
 
     return f'''<!doctype html>
-<html lang="{lang["code"]}" dir="{lang["dir"]}">
+<html lang="{lang["code"]}" dir="{lang["dir"]}"{' data-home' if slug == 'index' else ''}>
 <head>
 <meta charset="utf-8">
 {base}<meta name="viewport" content="width=device-width, initial-scale=1">
