@@ -146,7 +146,7 @@ and WCAG AA text contrast. It also confirms that forced dark mode (the "darken w
 setting on Android browsers) leaves the page exactly as designed.
 It covers all four languages, and also checks that the headline and main button are on the first screen of a 1280×720 laptop,
 that 1920px and 2560px screens get larger text, content across most of the width and the intro beside the headline,
-that the logo follows the theme, shoots up only on arrival, runs its light on other pages and on hover, and stays still with reduced motion,
+that the logo follows the theme, plays its intro on arrival and on the home page but not on other pages, lifts on hover, and stays still with reduced motion,
 that scrolling reveals every block while nothing on the first screen starts hidden, and that reduced motion or no JavaScript gives a still page,
 and tests the mobile menu, anchor offsets under the sticky header, contact form validation, the
 mailto output, the old-address redirects, that no cookies are set, that no research notes
@@ -186,29 +186,33 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
 - **Logo:** one vector file, `assets/images/brand/elevate-wordmark.svg`, traced from the original
   7167px artwork. The header inlines it, so it is sharp at any size and its letters follow the
   theme: navy on the white header (beige on white is only 2.4:1, so confirm the navy with the
-  brand owner) and the original beige in dark mode. The red bar, the logo's own "elevate"
-  stroke, moves:
-  - **On arrival** it shoots up out of the V, overshoots, settles, the 改善 (kaizen) mark fades
-    in, and a light runs up the bar. This plays when a visitor comes from another site or types
-    the address. It reads only the referrer and stores nothing on the visitor's device.
-  - **On every other page** the light runs up the bar once.
-  - **On hover or keyboard focus** the bar springs up along its own angle and the light runs again.
-  - **Motion that starts on its own ends within 2.5 seconds**, as WCAG 2.2.2 requires, so the
-    logo never loops in the corner of the visitor's eye.
-  - **With reduced motion** switched on in the visitor's system settings, it stays still.
+  brand owner) and the original beige in dark mode.
+  - **Intro:** one calm sequence of about 1.6 seconds. The seven letters fade up one after
+    another, the red line (the logo's own "elevate" stroke) draws up out of the V in a single
+    smooth stroke, and the 改善 (kaizen) mark fades in.
+  - **When it plays:** every time the home page opens, so it shows when you present the site,
+    and when a visitor arrives on any page from another site or by typing the address. It does
+    not replay on other pages inside the site. It reads only the referrer and stores nothing on
+    the visitor's device.
+  - **On hover or keyboard focus:** the red line lifts gently along its own angle.
+  - **Limits:** motion that starts on its own ends within 2 seconds, as WCAG 2.2.2 requires, so
+    the logo never loops at the edge of the visitor's view. With reduced motion switched on in
+    the visitor's system settings, the logo stays still.
 
   The footer, which is always dark, shows a beige copy that the build writes to `dist/`. To
-  change the logo, edit the SVG in a vector editor. Keep the ids `logo-letters` and `logo-kanji`,
-  the red bar as one `<line>`, and `color="#0f2137"` on the root.
-- **Motion:** the logo's red line is the motif, and every movement is short and vertical.
+  change the logo, edit the SVG in a vector editor. Keep the seven letter paths (one per letter,
+  in order) inside `<g id="logo-letters">`, the id `logo-kanji`, the red bar as one `<line>`, and
+  `color="#0f2137"` on the root.
+- **Motion:** the logo's red line is the motif. Every movement is short and vertical and uses one
+  easing curve (`--glide`: a quick start and a long, soft finish).
   - Page headers rise in, one line after another, as the page opens.
   - Blocks below the first screen rise into view as they scroll in, lists item by item.
   - The red dash before each section label draws itself in.
   - The home page figures (8, 7, 26) count up.
   - A thin red line under the header tracks reading progress, in browsers that support
     scroll-driven animations, and the header gains a soft shadow once the page scrolls.
-  - Under the pointer, a light sweeps across buttons, a red line runs along service and sector
-    rows, and client logos lift slightly.
+  - Under the pointer, a red line runs along service and sector rows, and client logos lift
+    slightly.
 
   Content is never hidden without JavaScript, and blocks already on screen are never hidden.
   With reduced motion switched on in the visitor's system settings, nothing moves. The code is
