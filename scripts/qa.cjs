@@ -293,9 +293,11 @@ function serve() {
   if ((await cp.textContent('#wechat .copy-button')).trim() !== 'Copied') fail('WeChat copy button gave no feedback');
   await ctx.close();
 
-  // 6c. Logo: inline SVG whose letters follow the theme, an intro on arrival only (not on every
-  //     page inside the site), a lift on hover, no motion when reduced motion is requested,
-  //     and the footer's beige copy loads.
+  // 6c. Logo: inline SVG whose letters follow the theme. The red bar shoots up on arrival only
+  //     (not on every page inside the site), a light runs up it on every page, it springs up
+  //     with the light on hover, nothing moves with reduced motion, and the footer's beige
+  //     copy loads.
+  const logoAnims = (p) => p.evaluate(() => document.getAnimations().map((a) => a.animationName).filter(Boolean));
   for (const scheme of ['light', 'dark']) {
     const lp = await browser.newPage({ viewport: { width: 1280, height: 800 }, colorScheme: scheme });
     await lp.goto(base + 'index.html');
@@ -304,13 +306,17 @@ function serve() {
     if (fill !== want) fail(`logo letters in ${scheme} mode are ${fill}, expected ${want}`);
     if (scheme === 'light') {
       if (!(await lp.evaluate(() => document.documentElement.classList.contains('logo-intro')))) fail('logo intro did not play on arrival');
-      if (!(await lp.evaluate(() => document.getAnimations().some((a) => a.animationName === 'logo-draw')))) fail('logo draw animation missing');
+      const arrival = await logoAnims(lp);
+      for (const name of ['logo-draw', 'logo-rise', 'logo-glint']) if (!arrival.includes(name)) fail(`logo: ${name} missing on arrival`);
       await lp.evaluate(() => document.getAnimations().forEach((a) => a.finish()));
       await lp.hover('.site-header .brand');
-      await lp.waitForTimeout(600);
+      if (!(await logoAnims(lp)).includes('logo-glint')) fail('logo: no light on hover');
+      await lp.waitForTimeout(700);
       if ((await lp.evaluate(() => getComputedStyle(document.querySelector('.site-header .logo__bar')).transform)) === 'none') fail('logo bar does not lift on hover');
       await Promise.all([lp.waitForNavigation(), lp.click('.site-nav a[href="about.html"]')]);
       if (await lp.evaluate(() => document.documentElement.classList.contains('logo-intro'))) fail('logo intro replays on pages inside the site');
+      const inside = await logoAnims(lp);
+      if (!inside.includes('logo-glint') || inside.includes('logo-draw')) fail(`logo inside the site: expected only the light, got ${inside.join(', ')}`);
       const foot = lp.locator('.site-footer .brand img');
       await foot.scrollIntoViewIfNeeded();
       if (!(await foot.evaluate((i) => i.decode().then(() => i.naturalWidth > 0, () => false)))) fail('footer logo did not load');
@@ -325,7 +331,7 @@ function serve() {
   }
   const rm = await browser.newPage({ reducedMotion: 'reduce' });
   await rm.goto(base + 'index.html');
-  if (await rm.evaluate(() => document.getAnimations().some((a) => a.animationName === 'logo-draw'))) fail('logo animates with reduced motion requested');
+  if ((await logoAnims(rm)).some((n) => n.startsWith('logo-'))) fail('logo animates with reduced motion requested');
   await rm.close();
 
   // 7. Old Wix addresses redirect to the new pages

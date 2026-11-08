@@ -241,10 +241,16 @@ def _logo_part(pattern):
 _letters = _logo_part(r'<path id="logo-letters"[^>]*?\sd="([^"]+)"')
 _kanji = _logo_part(r'<path id="logo-kanji"[^>]*?\sd="([^"]+)"')
 _bar = _logo_part(r'(<line [^>]+/>)').replace('<line ', '<line class="logo__line" ', 1)
+# The light that runs up the red bar: the same line, white, narrower, and drawn as one short dash
+# (styles.css moves the dash). One copy plays on page load, the other on hover.
+_ends = ' '.join(k + '="' + _logo_part(r'<line[^>]*\s' + k + r'="([-0-9.]+)"') + '"' for k in ('x1', 'y1', 'x2', 'y2'))
+_glint_width = round(float(_logo_part(r'<line [^>]*stroke-width="([0-9.]+)"')) * 0.5, 1)
+_glints = ''.join(f'<line class="logo__glint logo__glint--{when}" {_ends} stroke="#fff" stroke-width="{_glint_width}" '
+                  f'stroke-linecap="round" pathLength="1"/>' for when in ('load', 'hover'))
 if 'color="#0f2137"' not in LOGO_SVG:
     raise ValueError('elevate-wordmark.svg: the root <svg> needs color="#0f2137" (the footer copy swaps it)')
 LOGO_INLINE = (f'<svg class="logo" viewBox="{LOGO_VIEWBOX}" aria-hidden="true" focusable="false">'
-               f'<path fill="currentColor" d="{_letters}"/><g class="logo__bar">{_bar}'
+               f'<path fill="currentColor" d="{_letters}"/><g class="logo__bar">{_bar}{_glints}'
                f'<path class="logo__kanji" fill="#fff" d="{_kanji}"/></g></svg>')
 
 # Runs before first paint. Marks JS as available, and plays the logo's intro only when the

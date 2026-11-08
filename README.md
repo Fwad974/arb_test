@@ -146,7 +146,7 @@ and WCAG AA text contrast. It also confirms that forced dark mode (the "darken w
 setting on Android browsers) leaves the page exactly as designed.
 It covers all four languages, and also checks that the headline and main button are on the first screen of a 1280×720 laptop,
 that 1920px and 2560px screens get larger text, content across most of the width and the intro beside the headline,
-that the logo follows the theme, animates only on arrival and stays still with reduced motion,
+that the logo follows the theme, shoots up only on arrival, runs its light on other pages and on hover, and stays still with reduced motion,
 and tests the mobile menu, anchor offsets under the sticky header, contact form validation, the
 mailto output, the old-address redirects, that no cookies are set, that no research notes
 remain in the legal text, and the 404 page. On the translated sites it also checks `lang`/`dir`,
@@ -187,10 +187,13 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
   theme: navy on the white header (beige on white is only 2.4:1, so confirm the navy with the
   brand owner) and the original beige in dark mode. The red bar, the logo's own "elevate"
   stroke, moves:
-  - **On arrival** it draws itself upward from the V, and the 改善 (kaizen) mark fades in. This
-    plays once when a visitor comes from another site or types the address, not on every page
-    inside the site. It reads only the referrer and stores nothing on the visitor's device.
-  - **On hover or keyboard focus** it lifts a little along its own angle.
+  - **On arrival** it shoots up out of the V, overshoots, settles, the 改善 (kaizen) mark fades
+    in, and a light runs up the bar. This plays when a visitor comes from another site or types
+    the address. It reads only the referrer and stores nothing on the visitor's device.
+  - **On every other page** the light runs up the bar once.
+  - **On hover or keyboard focus** the bar springs up along its own angle and the light runs again.
+  - **Motion that starts on its own ends within 2.5 seconds**, as WCAG 2.2.2 requires, so the
+    logo never loops in the corner of the visitor's eye.
   - **With reduced motion** switched on in the visitor's system settings, it stays still.
 
   The footer, which is always dark, shows a beige copy that the build writes to `dist/`. To
