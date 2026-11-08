@@ -137,6 +137,36 @@
       if (entry.isIntersecting) { counter.unobserve(entry.target); count(entry.target); }
     }));
     $$('.stat dt').forEach((el) => counter.observe(el));
+
+    // Trust strip: the two rows of logos drift in opposite directions. Each row is repeated
+    // until one set covers the screen, then doubled for a seamless loop; the copies are hidden
+    // from screen readers and the keyboard. Hover, focus or the pause button stop it.
+    $$('.marquee').forEach((marquee) => {
+      const viewport = $('.marquee__viewport', marquee);
+      marquee.classList.add('is-moving');
+      $$('.marquee__row', marquee).forEach((row, r) => {
+        const items = Array.from(row.children);
+        const set = row.scrollWidth || 1;
+        const copies = 2 * Math.max(1, Math.ceil(viewport.clientWidth / set));
+        for (let k = 1; k < copies; k++) {
+          items.forEach((li) => {
+            const copy = li.cloneNode(true);
+            copy.setAttribute('aria-hidden', 'true');
+            $$('a', copy).forEach((a) => a.setAttribute('tabindex', '-1'));
+            row.appendChild(copy);
+          });
+        }
+        row.style.setProperty('--dur', `${Math.round(row.scrollWidth / 2 / (r ? 22 : 26))}s`);  // px per second
+      });
+      const toggle = $('.marquee__toggle', marquee);
+      if (toggle) {
+        toggle.hidden = false;
+        toggle.addEventListener('click', () => {
+          const paused = marquee.classList.toggle('is-paused');
+          toggle.setAttribute('aria-label', paused ? toggle.dataset.labelPlay : toggle.dataset.labelPause);
+        });
+      }
+    });
   }
 
   /* ---------- enquiry form → pre-filled email ---------- */

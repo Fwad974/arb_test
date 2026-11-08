@@ -9,7 +9,8 @@
  * Every layout, error and contrast check runs in light AND dark mode, and the
  * page must look identical with the browser's forced dark mode switched on.
  * Checks: horizontal overflow at 8 widths (320-2560px), JS errors, AA text
- * contrast, headline on the first screen, large screens using their width, the logo, motion, mobile menu, anchors clearing the
+ * contrast, headline on the first screen, large screens using their width, the logo, motion,
+ * the moving logo strip and its pause button, mobile menu, anchors clearing the
  * sticky header, contact form behaviour, redirects from old addresses, no
  * cookies, no leftover research notes in the legal text, and for the translated
  * sites (/ar/, /zh/, /ja/): lang/dir, untranslated text, the language menu and the forms.
@@ -289,7 +290,7 @@ function serve() {
   // Linked partner logos (third value in CLIENTS_NETWORK) open the partner's site in a new tab.
   for (const name of ['index.html', 'ar/index.html', 'zh/index.html', 'ja/index.html']) {
     await cp.goto(base + name);
-    const link = cp.locator('#clients a[href="https://www.flopexa.com/"]');
+    const link = cp.locator('#clients li:not([aria-hidden]) a[href="https://www.flopexa.com/"]');
     if ((await link.count()) !== 1 || (await link.getAttribute('target')) !== '_blank') fail(`${name}: Flopexa logo link missing`);
   }
   await cp.goto(base + 'contact.html');
@@ -386,6 +387,50 @@ function serve() {
     await ctx.close();
   }
 
+  // 6e. Trust strip on the home page, right under the page header: the two rows of client logos
+  //     move, the copies that make the loop seamless are hidden from screen readers and the
+  //     keyboard, the pause button stops and restarts them with a label in the page's language,
+  //     and with reduced motion the logos are a still grid with no button.
+  {
+    const tp = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    await tp.goto(base + 'index.html');
+    const strip = await tp.evaluate(() => {
+      const m = document.querySelector('.marquee');
+      return {
+        afterHero: !!document.querySelector('main .hero + .trust'),
+        moving: m.classList.contains('is-moving'),
+        anims: [...m.querySelectorAll('.marquee__row')].map((r) => getComputedStyle(r).animationName),
+        real: m.querySelectorAll('li:not([aria-hidden])').length,
+        focusableCopies: m.querySelectorAll('li[aria-hidden] a:not([tabindex="-1"])').length,
+        button: !m.querySelector('.marquee__toggle').hidden,
+      };
+    });
+    if (!strip.afterHero) fail('trust strip is not right under the home page header');
+    if (!strip.moving || strip.anims.join() !== 'marquee,marquee') fail(`trust strip does not move (${JSON.stringify(strip)})`);
+    if (strip.real !== 14) fail(`trust strip shows ${strip.real} logos, expected 14`);
+    if (strip.focusableCopies) fail('trust strip: hidden logo copies can take keyboard focus');
+    if (!strip.button) fail('trust strip: pause button missing');
+    const toggle = tp.locator('.marquee__toggle');
+    const pauseLabel = await toggle.getAttribute('aria-label');
+    await toggle.click();
+    const paused = await tp.evaluate(() => getComputedStyle(document.querySelector('.marquee__row')).animationPlayState);
+    if (paused !== 'paused' || (await toggle.getAttribute('aria-label')) === pauseLabel) fail('trust strip: pause button does not pause or relabel');
+    await toggle.click();
+    await tp.mouse.move(5, 5);
+    if ((await tp.evaluate(() => getComputedStyle(document.querySelector('.marquee__row')).animationPlayState)) !== 'running') fail('trust strip: does not restart');
+    for (const [dir, own] of [['ar/', /[\u0600-\u06FF]/], ['zh/', /[\u3400-\u9FFF]/], ['ja/', /[\u3040-\u30FF]/]]) {
+      await tp.goto(base + dir + 'index.html');
+      if (!own.test(await tp.getAttribute('.marquee__toggle', 'aria-label'))) fail(`${dir}: pause button label is not translated`);
+    }
+    await tp.close();
+    const still = await browser.newPage({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
+    await still.goto(base + 'index.html');
+    const s2 = await still.evaluate(() => ({ moving: document.querySelector('.marquee').classList.contains('is-moving'),
+      button: !document.querySelector('.marquee__toggle').hidden, logos: document.querySelectorAll('.marquee li').length }));
+    if (s2.moving || s2.button || s2.logos !== 14) fail(`trust strip with reduced motion: expected 14 still logos and no button, got ${JSON.stringify(s2)}`);
+    await still.close();
+  }
+
   // 7. Old Wix addresses redirect to the new pages
   for (const [old, now] of [['home-1.html', 'services.html'], ['blank-3.html', 'advisory.html'], ['terms-and-coniditions.html', 'terms.html']]) {
     await page.goto(base + old);
@@ -401,5 +446,5 @@ function serve() {
   await browser.close();
   server.close();
   if (failures.length) { console.error(`QA FAILED (${failures.length})\n  ` + failures.join('\n  ')); process.exit(1); }
-  console.log(`QA passed: ${pages.length} pages (English, Arabic, Chinese, Japanese) x 8 widths x light/dark, contrast, forced dark, first screen, large screens, logo, motion, menus, anchors, forms, language menu, messaging, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
+  console.log(`QA passed: ${pages.length} pages (English, Arabic, Chinese, Japanese) x 8 widths x light/dark, contrast, forced dark, first screen, large screens, logo, motion, logo strip, menus, anchors, forms, language menu, messaging, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
 })();

@@ -148,6 +148,7 @@ It covers all four languages, and also checks that the headline and main button 
 that 1920px and 2560px screens get larger text, content across most of the width and the intro beside the headline,
 that the logo follows the theme, plays its intro on arrival and on the home page but not on other pages, lifts on hover, and stays still with reduced motion,
 that scrolling reveals every block while nothing on the first screen starts hidden, and that reduced motion or no JavaScript gives a still page,
+that the moving logo strip sits under the home page header, pauses with its button and is a still grid with reduced motion,
 and tests the mobile menu, anchor offsets under the sticky header, contact form validation, the
 mailto output, the old-address redirects, that no cookies are set, that no research notes
 remain in the legal text, and the 404 page. On the translated sites it also checks `lang`/`dir`,
@@ -217,6 +218,20 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
   Content is never hidden without JavaScript, and blocks already on screen are never hidden.
   With reduced motion switched on in the visitor's system settings, nothing moves. The code is
   the "motion" part of `styles.css` and of `app.js`.
+- **Ideas adapted from deepl.com** (patterns only, not DeepL's branding or assets):
+  - **Trust strip.** The client and partner logos sit right under the home page header, in two
+    rows that drift slowly in opposite directions and fade out at the edges. They stop under the
+    pointer or keyboard focus, and a pause button stops them for good, as WCAG 2.2.2 requires
+    for anything that moves for more than 5 seconds. With reduced motion, or without
+    JavaScript, the logos are a still grid.
+  - **Soft light behind page headers.** A faint sand glow, with a trace of the brand red, in
+    the top corner. It is navy in dark mode and mirrored in Arabic.
+  - **Tinted band.** "How we work" on the home page sits on a full-width sand band, which breaks
+    up the run of white sections.
+  - **A letter in each language of the site** on the closing call to action: E, ع, 中 and あ,
+    one for each of English, Arabic, Chinese and Japanese. They rise into place as the panel
+    scrolls into view. They are decorative, hidden from screen readers, and shown only on
+    screens 1000px wide or more.
 - **Scale:** every size is in `rem`, and the root text size grows with the screen: 16px up to
   1280px wide, 18px at 1920px, 20px at 2560px, and at most 22px. Type, spacing, icons, logos and
   the content width all grow together, so a large monitor shows the same composition at a

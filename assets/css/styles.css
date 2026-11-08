@@ -32,6 +32,8 @@
   --error: #9a0000;
   --header-bg: rgba(255, 255, 255, 0.92);
   --header-shadow: 0 0.75rem 1.5rem -1.25rem rgba(15, 33, 55, 0.35);
+  --glow-sand: rgba(240, 232, 218, 0.9);  /* soft light behind page headers */
+  --glow-red: rgba(192, 0, 0, 0.05);
   --menu-shadow: 0 1.5rem 2.5rem -1.5rem rgba(15, 33, 55, 0.25);
   --panel: #0f2137;          /* call-to-action panel */
   --footer-bg: #0f2137;
@@ -71,6 +73,8 @@
     --error: #ff8a8a;
     --header-bg: rgba(11, 22, 34, 0.9);
     --header-shadow: 0 0.75rem 1.5rem -1rem rgba(0, 0, 0, 0.7);
+    --glow-sand: rgba(40, 70, 104, 0.42);
+    --glow-red: rgba(192, 0, 0, 0.09);
     --menu-shadow: 0 1.5rem 2.5rem -1.5rem rgba(0, 0, 0, 0.6);
     --panel: #152b42;
     --footer-bg: #07101a;
@@ -169,6 +173,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ---------- layout ---------- */
 .wrap { width: min(100% - 2 * var(--gutter), var(--max)); margin-inline: auto; }
 .section { padding-block: var(--space); border-top: 1px solid var(--line); }
+.section--tint { background: var(--surface); border-top-color: transparent; }
+.section--tint + .section { border-top-color: transparent; }
 .split { display: grid; gap: 2.5rem; }
 .split__head h2 { max-width: 16ch; }
 .section-intro { margin-top: 1.25rem; color: var(--muted); max-width: 30em; }
@@ -303,7 +309,18 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .actions--tight { margin-top: 0; }
 
 /* ---------- hero ---------- */
-.hero { padding-block: clamp(2.5rem, 5.5vw, 5rem) clamp(2.5rem, 5vw, 4.5rem); }
+.hero {
+  padding-block: clamp(2.5rem, 5.5vw, 5rem) clamp(2.5rem, 5vw, 4.5rem);
+  /* a soft light in the top corner, behind the headline side, never under body text */
+  background:
+    radial-gradient(52rem 30rem at 92% -12%, var(--glow-sand), transparent 70%),
+    radial-gradient(34rem 20rem at 104% 36%, var(--glow-red), transparent 72%);
+}
+[dir="rtl"] .hero {
+  background:
+    radial-gradient(52rem 30rem at 8% -12%, var(--glow-sand), transparent 70%),
+    radial-gradient(34rem 20rem at -4% 36%, var(--glow-red), transparent 72%);
+}
 .hero h1 { max-width: 18ch; }
 .breadcrumb ol { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 2.25rem; padding: 0; list-style: none; font-size: 0.875rem; color: var(--muted); }
 .breadcrumb li + li::before { content: "/"; margin-inline-end: 0.5rem; color: var(--field); }
@@ -472,6 +489,7 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 /* ---------- CTA ---------- */
 .cta { padding-block: var(--space); border-top: 1px solid var(--line); }
 .cta__inner {
+  position: relative; overflow: hidden;
   display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 2rem 4rem;
   padding: clamp(2rem, 5vw, 4rem); background: var(--panel); border-radius: var(--radius);
 }
@@ -565,6 +583,65 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 }
 @media (max-width: 480px) {
   .logos li, .split__body .logos li { flex-basis: calc((100% - 0.75rem) / 2); }
+}
+
+/* ---------- trust strip: client logos under the home hero ----------
+   Still and centred by default. With motion on, app.js adds .is-moving: the two rows drift in
+   opposite directions, fade out at the edges, and stop under the pointer, on keyboard focus or
+   with the pause button (WCAG 2.2.2). */
+.trust { padding-block: clamp(2.5rem, 5vw, 4rem); }
+.trust__head { margin-bottom: 2rem; text-align: center; }
+.trust__head h2 { font-size: 1.25rem; letter-spacing: -0.01em; }
+.trust__head p { max-width: 40em; margin: 0.375rem auto 0; color: var(--muted); font-size: 0.9375rem; }
+.marquee { position: relative; }
+.marquee__viewport { display: grid; gap: 1.25rem; }
+.marquee.is-moving .marquee__viewport {
+  overflow: hidden; padding-block: 0.25rem; direction: ltr;  /* logos have no reading direction; keeps the loop maths simple in Arabic */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.marquee.is-moving .marquee__row {
+  flex-wrap: nowrap; justify-content: flex-start; gap: 0; width: max-content;
+  animation: marquee var(--dur, 45s) linear infinite;
+}
+.marquee.is-moving .marquee__row + .marquee__row { animation-direction: reverse; }
+.marquee.is-moving .marquee__row li { flex: 0 0 auto; width: 11rem; padding-inline: 1.25rem; }
+.marquee.is-moving:hover .marquee__row, .marquee.is-moving:focus-within .marquee__row,
+.marquee.is-paused .marquee__row { animation-play-state: paused; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+.marquee__toggle {
+  display: grid; place-items: center; width: 2.25rem; height: 2.25rem; margin: 1rem 0 0 auto; padding: 0;
+  border: 1px solid var(--line); border-radius: 50%; background: var(--bg); color: var(--ink); cursor: pointer;
+  transition: border-color var(--ease);
+}
+[dir="rtl"] .marquee__toggle { margin: 1rem auto 0 0; }
+.marquee__toggle[hidden] { display: none; }
+.marquee__toggle:hover { border-color: var(--ink); }
+.marquee__toggle .icon { width: 1rem; height: 1rem; }
+.marquee__toggle .icon--play, .marquee.is-paused .marquee__toggle .icon--pause { display: none; }
+.marquee.is-paused .marquee__toggle .icon--play { display: block; }
+
+/* ---------- call to action: a letter in each language of the site ---------- */
+.cta__glyphs { display: none; }
+@media (min-width: 1000px) {
+  .cta__glyphs {
+    position: absolute; top: clamp(1.75rem, 3vw, 2.75rem); inset-inline-end: clamp(2rem, 4vw, 4rem);
+    display: flex; gap: 0.625rem; pointer-events: none;
+  }
+  .cta__glyphs span {
+    display: grid; place-items: center; width: 3.25rem; height: 3.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 0.875rem;
+    background: rgba(255, 255, 255, 0.06); color: #fff;
+    font-size: 1.5rem; font-weight: 500; line-height: 1;
+    transform: rotate(var(--r, 0deg));
+  }
+  .cta__glyphs span:first-child { border-color: var(--accent); background: var(--accent); }
+  .motion .cta__inner.reveal .cta__glyphs span { opacity: 0; transform: translateY(1.25rem) rotate(0deg); }
+  .motion .cta__inner.reveal.is-in .cta__glyphs span {
+    opacity: 1; transform: rotate(var(--r, 0deg));
+    transition: opacity 0.6s ease-out, transform 1.1s var(--glide);
+    transition-delay: calc(0.3s + var(--k) * 90ms);
+  }
 }
 
 /* ---------- motion ----------

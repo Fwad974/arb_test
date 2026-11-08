@@ -104,6 +104,8 @@ ICONS = {
     'external': '<path d="M7 17 17 7M9 7h8v8"/>',
     'menu': '<path d="M4 7h16M4 12h16M4 17h16"/>',
     'close': '<path d="M6 6l12 12M18 6 6 18"/>',
+    'pause': '<path d="M9 6.5v11M15 6.5v11"/>',
+    'play': '<path d="M8.5 6.2v11.6L18 12z"/>',
     'globe': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3Z"/>',
 }
 
@@ -220,6 +222,29 @@ def logos(items, cls=''):
     return f'<ul class="logos {cls}">' + ''.join(out) + '</ul>'
 
 
+def trust_strip(items):
+    """Client logos in two rows under the home hero. With motion on, app.js sets the rows
+    drifting in opposite directions and shows the pause button (styles.css .marquee); otherwise
+    they are a still, centred grid."""
+    half = (len(items) + 1) // 2
+    toggle = (f'<button class="marquee__toggle" type="button" hidden aria-label="{e(t("marquee_pause"))}" '
+              f'data-label-pause="{e(t("marquee_pause"))}" data-label-play="{e(t("marquee_play"))}">'
+              f'{icon("pause")}{icon("play")}</button>')
+    return f'''
+<section class="section trust" id="clients">
+  <div class="wrap">
+    <div class="trust__head">
+      <h2>{hl(t("clients_heading"))}</h2>
+      <p>{e(t("clients_intro"))}</p>
+    </div>
+    <div class="marquee">
+      <div class="marquee__viewport">{logos(items[:half], 'marquee__row')}{logos(items[half:], 'marquee__row')}</div>
+      {toggle}
+    </div>
+  </div>
+</section>'''
+
+
 # The wordmark is one SVG master file, traced from the original artwork. The header inlines it,
 # so the letters follow the theme colour (navy on white, beige in dark mode) and the red bar can
 # draw itself in and lift on hover (see .logo in styles.css). The footer, which is always dark,
@@ -273,13 +298,14 @@ REDIRECTS = {
 }
 
 
-def section(eyebrow, heading, body, intro='', id=None, footer=''):
-    """Two-column editorial section: heading on the start side, content on the end side."""
+def section(eyebrow, heading, body, intro='', id=None, footer='', cls=''):
+    """Two-column editorial section: heading on the start side, content on the end side.
+    cls='section--tint' sets it on a full-width sand band."""
     id_attr = f' id="{id}"' if id else ''
     intro_html = f'<p class="section-intro">{e(intro)}</p>' if intro else ''
     footer_html = f'<div class="section-foot">{footer}</div>' if footer else ''
     return f'''
-<section class="section"{id_attr}>
+<section class="section{' ' + cls if cls else ''}"{id_attr}>
   <div class="wrap split">
     <div class="split__head">
       <p class="eyebrow">{e(eyebrow)}</p>
@@ -369,10 +395,17 @@ def faq(pairs):
         f'<details><summary>{e(q)}</summary><p>{e(a)}</p></details>' for q, a in pairs) + '</div>'
 
 
+# One letter for each language of the site: Latin, Arabic, Chinese and Japanese. Decorative.
+CTA_GLYPHS = ('<div class="cta__glyphs" aria-hidden="true">'
+              '<span style="--k:0;--r:-8deg">E</span><span lang="ar" style="--k:1;--r:6deg">ع</span>'
+              '<span lang="zh-Hans" style="--k:2;--r:-4deg">中</span><span lang="ja" style="--k:3;--r:9deg">あ</span></div>')
+
+
 def cta(title, body, label, href='contact.html'):
     return f'''
 <section class="cta">
   <div class="wrap cta__inner">
+    {CTA_GLYPHS}
     <div>
       <h2>{hl(title)}</h2>
       <p>{e(body)}</p>
@@ -603,7 +636,7 @@ def build_home():
     steps = '<ol class="steps">' + ''.join(
         f'<li class="step"><span class="step__num">{num(i + 1)}</span><h3>{e(x)}</h3><p>{e(d)}</p></li>'
         for i, (x, d) in enumerate(C.STEPS)) + '</ol>'
-    approach = section(t('how_eyebrow'), t('how_heading'), steps, intro=t('how_intro'))
+    approach = section(t('how_eyebrow'), t('how_heading'), steps, intro=t('how_intro'), cls='section--tint')
 
     who = section(
         t('who_eyebrow'), t('who_heading'),
@@ -616,8 +649,7 @@ def build_home():
         </div>''',
         footer=link_arrow('about.html', t('about_link')))
 
-    network = section_wide(t('clients_eyebrow'), t('clients_heading'), logos(C.CLIENTS_NETWORK),
-                           intro=t('clients_intro'), id='clients')
+    network = trust_strip(C.CLIENTS_NETWORK)
 
     sectors = section(
         t('sectors_eyebrow'), t('sectors_heading'),
@@ -625,7 +657,7 @@ def build_home():
               for i, s in enumerate(C.SECTORS)], compact=True),
         intro=t('sectors_intro'), footer=link_arrow('sectors.html', t('all_sectors')))
 
-    body = hero + services + approach + who + network + sectors + cta(
+    body = hero + network + services + approach + who + sectors + cta(
         t('home_cta_title'), t('home_cta_body'), t('cta_discuss'))
     page('index', t('home_title'), t('home_desc'), body)
 
