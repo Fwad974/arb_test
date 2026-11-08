@@ -9,7 +9,7 @@
  * Every layout, error and contrast check runs in light AND dark mode, and the
  * page must look identical with the browser's forced dark mode switched on.
  * Checks: horizontal overflow at 8 widths (320-2560px), JS errors, AA text
- * contrast, headline on the first screen, large screens using their width, mobile menu, anchors clearing the
+ * contrast, headline on the first screen, large screens using their width, the logo, mobile menu, anchors clearing the
  * sticky header, contact form behaviour, redirects from old addresses, no
  * cookies, no leftover research notes in the legal text, and for the translated
  * sites (/ar/, /zh/, /ja/): lang/dir, untranslated text, the language menu and the forms.
@@ -126,7 +126,8 @@ function serve() {
     for (const b of [browser, forced]) {
       const p = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
       await p.goto(base + name);
-      await p.evaluate(async () => { await document.fonts.ready; });
+      // Finish the logo intro first, so both screenshots show the same frame.
+      await p.evaluate(async () => { await document.fonts.ready; document.getAnimations().forEach((a) => a.finish()); });
       shots.push(await p.screenshot({ animations: 'disabled' }));
       await p.close();
     }
@@ -292,6 +293,41 @@ function serve() {
   if ((await cp.textContent('#wechat .copy-button')).trim() !== 'Copied') fail('WeChat copy button gave no feedback');
   await ctx.close();
 
+  // 6c. Logo: inline SVG whose letters follow the theme, an intro on arrival only (not on every
+  //     page inside the site), a lift on hover, no motion when reduced motion is requested,
+  //     and the footer's beige copy loads.
+  for (const scheme of ['light', 'dark']) {
+    const lp = await browser.newPage({ viewport: { width: 1280, height: 800 }, colorScheme: scheme });
+    await lp.goto(base + 'index.html');
+    const fill = await lp.evaluate(() => getComputedStyle(document.querySelector('.site-header .logo path')).fill);
+    const want = scheme === 'light' ? 'rgb(15, 33, 55)' : 'rgb(180, 162, 152)';
+    if (fill !== want) fail(`logo letters in ${scheme} mode are ${fill}, expected ${want}`);
+    if (scheme === 'light') {
+      if (!(await lp.evaluate(() => document.documentElement.classList.contains('logo-intro')))) fail('logo intro did not play on arrival');
+      if (!(await lp.evaluate(() => document.getAnimations().some((a) => a.animationName === 'logo-draw')))) fail('logo draw animation missing');
+      await lp.evaluate(() => document.getAnimations().forEach((a) => a.finish()));
+      await lp.hover('.site-header .brand');
+      await lp.waitForTimeout(600);
+      if ((await lp.evaluate(() => getComputedStyle(document.querySelector('.site-header .logo__bar')).transform)) === 'none') fail('logo bar does not lift on hover');
+      await Promise.all([lp.waitForNavigation(), lp.click('.site-nav a[href="about.html"]')]);
+      if (await lp.evaluate(() => document.documentElement.classList.contains('logo-intro'))) fail('logo intro replays on pages inside the site');
+      const foot = lp.locator('.site-footer .brand img');
+      await foot.scrollIntoViewIfNeeded();
+      if (!(await foot.evaluate((i) => i.decode().then(() => i.naturalWidth > 0, () => false)))) fail('footer logo did not load');
+    }
+    await lp.close();
+  }
+  for (const [dir, label] of [['ar/', /[\u0600-\u06FF]/], ['zh/', /首页/], ['ja/', /ホーム/]]) {
+    const lp = await browser.newPage();
+    await lp.goto(base + dir + 'index.html');
+    if (!label.test(await lp.getAttribute('.site-header .brand', 'aria-label'))) fail(`${dir}: logo link label is not translated`);
+    await lp.close();
+  }
+  const rm = await browser.newPage({ reducedMotion: 'reduce' });
+  await rm.goto(base + 'index.html');
+  if (await rm.evaluate(() => document.getAnimations().some((a) => a.animationName === 'logo-draw'))) fail('logo animates with reduced motion requested');
+  await rm.close();
+
   // 7. Old Wix addresses redirect to the new pages
   for (const [old, now] of [['home-1.html', 'services.html'], ['blank-3.html', 'advisory.html'], ['terms-and-coniditions.html', 'terms.html']]) {
     await page.goto(base + old);
@@ -307,5 +343,5 @@ function serve() {
   await browser.close();
   server.close();
   if (failures.length) { console.error(`QA FAILED (${failures.length})\n  ` + failures.join('\n  ')); process.exit(1); }
-  console.log(`QA passed: ${pages.length} pages (English, Arabic, Chinese, Japanese) x 8 widths x light/dark, contrast, forced dark, first screen, large screens, menus, anchors, forms, language menu, messaging, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
+  console.log(`QA passed: ${pages.length} pages (English, Arabic, Chinese, Japanese) x 8 widths x light/dark, contrast, forced dark, first screen, large screens, logo, menus, anchors, forms, language menu, messaging, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
 })();

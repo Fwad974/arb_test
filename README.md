@@ -56,7 +56,8 @@ Open http://localhost:8000. Rebuild after each edit with `python3 build.py`.
 | WhatsApp number, WeChat ID and QR code, LINE Official Account | `site.env` |
 | English copy: services, sectors, team, contact details, social links, client logos, legal text, interface text | `content.py` |
 | Translations (same structure, text only) | `content_ar.py`, `content_zh.py`, `content_ja.py` |
-| Logos, team photos, brand files | `assets/images/` (WebP) |
+| Site logo (vector master) | `assets/images/brand/elevate-wordmark.svg` |
+| Client logos, team photos, brand photos | `assets/images/` (WebP) |
 | Preparing a new client logo | `scripts/prepare_logos.py` (needs Pillow and NumPy, see below) |
 | Page templates and layout | `build.py` |
 | Styles and design tokens | `assets/css/styles.css` |
@@ -145,6 +146,7 @@ and WCAG AA text contrast. It also confirms that forced dark mode (the "darken w
 setting on Android browsers) leaves the page exactly as designed.
 It covers all four languages, and also checks that the headline and main button are on the first screen of a 1280×720 laptop,
 that 1920px and 2560px screens get larger text, content across most of the width and the intro beside the headline,
+that the logo follows the theme, animates only on arrival and stays still with reduced motion,
 and tests the mobile menu, anchor offsets under the sticky header, contact form validation, the
 mailto output, the old-address redirects, that no cookies are set, that no research notes
 remain in the legal text, and the 404 page. On the translated sites it also checks `lang`/`dir`,
@@ -180,9 +182,20 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
 - **Type:** IBM Plex Sans for English and Readex Pro for Arabic (400/500/600, self-hosted in
   `assets/fonts/`, SIL Open Font License), with one type scale on every page. Readex Pro was
   chosen from eight Arabic typefaces (see `docs/ui-audit.md`) and loads only where Arabic text appears.
-- **Logo:** the original beige wordmark on dark backgrounds (the footer, and the header in dark
-  mode), and a navy variant (`elevate-wordmark-dark.webp`) on the white header, because beige on
-  white is only 2.4:1. Confirm the navy variant with the brand owner.
+- **Logo:** one vector file, `assets/images/brand/elevate-wordmark.svg`, traced from the original
+  7167px artwork. The header inlines it, so it is sharp at any size and its letters follow the
+  theme: navy on the white header (beige on white is only 2.4:1, so confirm the navy with the
+  brand owner) and the original beige in dark mode. The red bar, the logo's own "elevate"
+  stroke, moves:
+  - **On arrival** it draws itself upward from the V, and the 改善 (kaizen) mark fades in. This
+    plays once when a visitor comes from another site or types the address, not on every page
+    inside the site. It reads only the referrer and stores nothing on the visitor's device.
+  - **On hover or keyboard focus** it lifts a little along its own angle.
+  - **With reduced motion** switched on in the visitor's system settings, it stays still.
+
+  The footer, which is always dark, shows a beige copy that the build writes to `dist/`. To
+  change the logo, edit the SVG in a vector editor. Keep the ids `logo-letters` and `logo-kanji`,
+  the red bar as one `<line>`, and `color="#0f2137"` on the root.
 - **Scale:** every size is in `rem`, and the root text size grows with the screen: 16px up to
   1280px wide, 18px at 1920px, 20px at 2560px, and at most 22px. Type, spacing, icons, logos and
   the content width all grow together, so a large monitor shows the same composition at a
