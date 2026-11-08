@@ -481,6 +481,7 @@ UI = dict(
     messaging='Message us', whatsapp='WhatsApp', whatsapp_action='Chat on WhatsApp',
     whatsapp_text='Hello Elevate Arabia, I would like to discuss a project.',
     wechat='WeChat', wechat_hint='Search for this ID in WeChat to add us.', copy='Copy ID', copied='Copied',
+    marquee_pause='Pause the moving logos', marquee_play='Play the moving logos',
     wechat_qr_alt='WeChat QR code for Elevate Arabia', line='LINE', line_action='Add us on LINE',
     # 404
     nf_eyebrow='Error 404', nf_title='Page not found.', nf_lead='The page you are looking for does not exist or has moved.',
