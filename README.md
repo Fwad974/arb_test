@@ -147,6 +147,7 @@ setting on Android browsers) leaves the page exactly as designed.
 It covers all four languages, and also checks that the headline and main button are on the first screen of a 1280×720 laptop,
 that 1920px and 2560px screens get larger text, content across most of the width and the intro beside the headline,
 that the logo follows the theme, shoots up only on arrival, runs its light on other pages and on hover, and stays still with reduced motion,
+that scrolling reveals every block while nothing on the first screen starts hidden, and that reduced motion or no JavaScript gives a still page,
 and tests the mobile menu, anchor offsets under the sticky header, contact form validation, the
 mailto output, the old-address redirects, that no cookies are set, that no research notes
 remain in the legal text, and the 404 page. On the translated sites it also checks `lang`/`dir`,
@@ -199,6 +200,19 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
   The footer, which is always dark, shows a beige copy that the build writes to `dist/`. To
   change the logo, edit the SVG in a vector editor. Keep the ids `logo-letters` and `logo-kanji`,
   the red bar as one `<line>`, and `color="#0f2137"` on the root.
+- **Motion:** the logo's red line is the motif, and every movement is short and vertical.
+  - Page headers rise in, one line after another, as the page opens.
+  - Blocks below the first screen rise into view as they scroll in, lists item by item.
+  - The red dash before each section label draws itself in.
+  - The home page figures (8, 7, 26) count up.
+  - A thin red line under the header tracks reading progress, in browsers that support
+    scroll-driven animations, and the header gains a soft shadow once the page scrolls.
+  - Under the pointer, a light sweeps across buttons, a red line runs along service and sector
+    rows, and client logos lift slightly.
+
+  Content is never hidden without JavaScript, and blocks already on screen are never hidden.
+  With reduced motion switched on in the visitor's system settings, nothing moves. The code is
+  the "motion" part of `styles.css` and of `app.js`.
 - **Scale:** every size is in `rem`, and the root text size grows with the screen: 16px up to
   1280px wide, 18px at 1920px, 20px at 2560px, and at most 22px. Type, spacing, icons, logos and
   the content width all grow together, so a large monitor shows the same composition at a

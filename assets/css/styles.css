@@ -31,6 +31,7 @@
   --accent-text: #c00000;    /* red used as text and small marks (6.5:1) */
   --error: #9a0000;
   --header-bg: rgba(255, 255, 255, 0.92);
+  --header-shadow: 0 0.75rem 1.5rem -1.25rem rgba(15, 33, 55, 0.35);
   --menu-shadow: 0 1.5rem 2.5rem -1.5rem rgba(15, 33, 55, 0.25);
   --panel: #0f2137;          /* call-to-action panel */
   --footer-bg: #0f2137;
@@ -68,6 +69,7 @@
     --accent-text: #f0565c;  /* 5.4:1, 4.8:1 on surface */
     --error: #ff8a8a;
     --header-bg: rgba(11, 22, 34, 0.9);
+    --header-shadow: 0 0.75rem 1.5rem -1rem rgba(0, 0, 0, 0.7);
     --menu-shadow: 0 1.5rem 2.5rem -1.5rem rgba(0, 0, 0, 0.6);
     --panel: #152b42;
     --footer-bg: #07101a;
@@ -195,7 +197,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   -webkit-backdrop-filter: saturate(180%) blur(0.75rem);
   backdrop-filter: saturate(180%) blur(0.75rem);
   border-bottom: 1px solid var(--line);
+  transition: box-shadow 0.3s ease;
 }
+.site-header.is-scrolled { box-shadow: var(--header-shadow); }
 .site-header__inner { min-height: var(--header-h); display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1.5rem; }
 .brand { display: inline-flex; align-items: center; margin-inline-end: auto; padding-block: 0.5rem; }
 .brand img { height: 1.75rem; width: auto; }
@@ -569,6 +573,78 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
   .logos li, .split__body .logos li { flex-basis: calc((100% - 0.75rem) / 2); }
 }
 
+/* ---------- motion ----------
+   The logo's red line is the motif. Page headers rise in, blocks rise into view as they scroll
+   in, the red dashes before labels draw themselves, the figures count up, a red line under the
+   header tracks reading progress, and links, buttons and logos answer the pointer.
+   Everything that hides content first needs .motion, which the head script sets only with
+   JavaScript, IntersectionObserver and no reduced-motion request, so content is never hidden
+   otherwise. Movement is vertical, so nothing can overflow sideways. */
+@keyframes rise { from { opacity: 0; transform: translateY(1.25rem); } }
+@keyframes draw { from { transform: scaleX(0); } }
+@keyframes progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.motion .eyebrow::before { transform-origin: left center; }
+.motion[dir="rtl"] .eyebrow::before { transform-origin: right center; }
+
+/* Page header: label, headline, intro and figures rise in one after another. */
+.motion .hero :is(.breadcrumb, .eyebrow, h1, .hero__side, .stats, .nf-alts) { animation: rise 0.75s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.motion .hero h1 { animation-delay: 0.08s; }
+.motion .hero .hero__side { animation-delay: 0.18s; }
+.motion .hero :is(.stats, .nf-alts) { animation-delay: 0.28s; }
+.motion .hero .eyebrow::before { animation: draw 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) 0.3s both; }
+
+/* Blocks below the first screen: app.js adds .reveal, then .is-in as each scrolls into view,
+   with --i staggering the blocks that arrive together. */
+.motion .reveal { opacity: 0; transform: translateY(1.5rem); }
+.motion .reveal.is-in {
+  opacity: 1; transform: none;
+  transition: opacity 0.6s ease-out, transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: calc(var(--i, 0) * 70ms);
+}
+.motion .reveal .eyebrow::before { transform: scaleX(0); }
+.motion .reveal.is-in .eyebrow::before { transform: none; transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) calc(var(--i, 0) * 70ms + 0.3s); }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Buttons: a light sweeps across on hover, like the light on the logo's red bar. */
+  .button { position: relative; overflow: hidden; isolation: isolate; }
+  .button::after {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.3) 50%, transparent 65%);
+    transform: translateX(-100%);
+  }
+  .button:hover::after { transform: translateX(100%); transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
+  [dir="rtl"] .button::after { transform: translateX(100%); }
+  [dir="rtl"] .button:hover::after { transform: translateX(-100%); }
+
+  /* Rows: a red line runs along the bottom of the row under the pointer or keyboard focus. */
+  .row { position: relative; }
+  .row::after {
+    content: ""; position: absolute; inset-inline: 0; bottom: -1px; height: 1px;
+    background: var(--accent-text); transform: scaleX(0); transform-origin: left center;
+    transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  [dir="rtl"] .row::after { transform-origin: right center; }
+  .row:has(> a:hover, > a:focus-visible)::after { transform: scaleX(1); }
+
+  /* Client logos lift slightly under the pointer. */
+  .logos img { transition: opacity var(--ease), transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .logos li:hover img, .logos a:focus-visible img { transform: translateY(-0.1875rem); }
+}
+
+/* Reading progress: a red line under the header grows as the page scrolls. CSS only, in
+   browsers with scroll-driven animations. */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .site-header::after {
+      content: ""; position: absolute; inset-inline: 0; bottom: -1px; height: 2px;
+      background: var(--accent); transform-origin: left center;
+      animation: progress linear both;
+      animation-timeline: scroll(root block);
+    }
+    [dir="rtl"] .site-header::after { transform-origin: right center; }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
@@ -581,6 +657,8 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 
 @media print {
   .site-header, .nav-toggle, .cta, .form { display: none; }
+  .motion .reveal { opacity: 1 !important; transform: none !important; }
+  .motion .hero * { animation: none !important; }
   .section { padding-block: 1.5rem; }
   .split__head { position: static; }
   .logos img { filter: none; }
