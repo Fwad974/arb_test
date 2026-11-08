@@ -200,19 +200,32 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .brand { display: inline-flex; align-items: center; margin-inline-end: auto; padding-block: 0.5rem; }
 .brand img { height: 1.75rem; width: auto; }
 
-/* The header logo is inline SVG (build.py, LOGO_INLINE): the letters follow the theme, and the
-   red bar, the logo's own "elevate" stroke, draws itself in when a visitor arrives and lifts
-   along its own angle on hover. Distances are in the logo's viewBox units (1760 x 384). */
+/* The header logo is inline SVG (build.py, LOGO_INLINE). The letters follow the theme, and the
+   red bar, the logo's own "elevate" stroke, moves:
+   - on arrival from another site, it shoots up out of the V, overshoots, settles, and a light
+     runs up it;
+   - on every other page, the light runs up it once;
+   - on hover or keyboard focus, it springs up along its own angle and the light runs again.
+   Motion that starts on its own ends within 2.5 s (WCAG 2.2.2), and none plays with reduced
+   motion. Distances are in the logo's viewBox units (1760 x 384); the bar rises at 60.8 deg. */
 .brand { color: var(--logo); }
 .logo { display: block; height: 1.625rem; width: auto; aspect-ratio: 1760 / 384; overflow: visible; }
-.logo__bar { transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.brand:hover .logo__bar, .brand:focus-visible .logo__bar { transform: translate(17.6px, -31.4px); }
+.logo__bar { transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.brand:hover .logo__bar, .brand:focus-visible .logo__bar { transform: translate(23.4px, -41.9px); }
+.logo__glint { stroke-opacity: 0; stroke-dasharray: 0.2 2; }
 @media (prefers-reduced-motion: no-preference) {
-  .logo-intro .site-header .logo__line { animation: logo-draw 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) 0.25s both; }
-  .logo-intro .site-header .logo__kanji { animation: logo-fade 0.45s ease-out 0.8s both; }
+  .site-header .logo__glint--load { animation: logo-glint 0.9s cubic-bezier(0.4, 0, 0.6, 1) 0.4s; }
+  .logo-intro .site-header .logo__line { animation: logo-draw 0.65s cubic-bezier(0.25, 0.8, 0.25, 1) 0.2s both; }
+  .logo-intro .site-header .logo__bar { animation: logo-rise 0.8s cubic-bezier(0.45, 0, 0.25, 1) 0.7s; }
+  .logo-intro .site-header .logo__kanji { animation: logo-fade 0.4s ease-out 1s both; }
+  .logo-intro .site-header .logo__glint--load { animation-delay: 1.5s; }
+  .brand:hover .logo__glint--hover, .brand:focus-visible .logo__glint--hover { animation: logo-glint 0.9s cubic-bezier(0.4, 0, 0.6, 1) 0.15s; }
 }
 @keyframes logo-draw { from { stroke-dasharray: 1 2; stroke-dashoffset: 1; } to { stroke-dasharray: 1 2; stroke-dashoffset: 0; } }
-@keyframes logo-fade { from { fill-opacity: 0; } }  /* fill-opacity, not opacity: painted on the main thread, so it never lags the draw */
+@keyframes logo-rise { 40% { transform: translate(27.8px, -49.8px); } }
+/* fill- and stroke-opacity, not opacity: painted on the main thread, so they never lag the draw */
+@keyframes logo-fade { from { fill-opacity: 0; } }
+@keyframes logo-glint { from { stroke-dashoffset: 0.28; stroke-opacity: 0.55; } to { stroke-dashoffset: -1.1; stroke-opacity: 0.55; } }
 .site-nav { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 2rem; }
 .site-nav > a:not(.button) { padding-block: 0.5rem; color: var(--text); text-decoration: none; font-size: 0.9375rem; }
 .site-nav > a:not(.button):hover { color: var(--accent-text); text-decoration: underline; }
