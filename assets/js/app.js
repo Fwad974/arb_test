@@ -64,6 +64,81 @@
     });
   });
 
+  /* ---------- header: a soft shadow once the page has scrolled ---------- */
+  const header = $('.site-header');
+  if (header) {
+    let queued = false;
+    const update = () => { header.classList.toggle('is-scrolled', window.scrollY > 8); queued = false; };
+    window.addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(update); } }, { passive: true });
+    update();
+  }
+
+  /* ---------- motion: blocks rise in as they scroll into view, figures count up ----------
+     Only when the head script set .motion (IntersectionObserver available, no reduced-motion
+     request). Blocks already on screen are left alone, so nothing visible ever disappears. */
+  if (document.documentElement.classList.contains('motion')) {
+    // Lists reveal item by item; every other block reveals as a whole.
+    const LISTS = '.rows, .logos, .people, .grid-values, .steps, .list, .contact-list';
+    const targets = $$('main .split__head, main .wide__head, main .cta__inner');
+    $$('main .split__body > *, main .section > .wrap:not(.split) > :not(.wide__head)').forEach((el) => {
+      if (el.matches(LISTS)) targets.push(...el.children); else targets.push(el);
+    });
+    targets.sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+    const reveal = new IntersectionObserver((entries) => {
+      let k = 0;  // stagger the blocks that arrive together
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.style.setProperty('--i', Math.min(k++, 8));
+        entry.target.classList.add('is-in');
+        reveal.unobserve(entry.target);
+      });
+    }, { rootMargin: '0px 0px -8% 0px' });
+    // A block holding a link target (#finance) must not rise after the browser has scrolled to
+    // it, or it ends up under the sticky header: show it at once instead.
+    const show = (id) => {
+      const target = id && document.getElementById(id);
+      if (!target) return;
+      targets.forEach((el) => {
+        if (el.contains(target) && el.classList.contains('reveal')) {
+          el.style.transition = 'none';
+          el.classList.add('is-in');
+          reveal.unobserve(el);
+        }
+      });
+    };
+    const fold = window.innerHeight;
+    const linked = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    targets.forEach((el) => {
+      if (el.getBoundingClientRect().top >= fold && !(linked && el.contains(linked))) { el.classList.add('reveal'); reveal.observe(el); }
+    });
+    // In-page links: show the target's block before the browser scrolls to it.
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href*="#"]');
+      if (a && a.pathname === location.pathname) show(decodeURIComponent(a.hash.slice(1)));
+    });
+    window.addEventListener('hashchange', () => show(decodeURIComponent(location.hash.slice(1))));
+
+    // Figures (8, 7, 26) count up from zero when they come into view, ending on the page's own text.
+    const count = (el) => {
+      const text = el.textContent;
+      const m = text.match(/^(\D*)(\d+)(\D*)$/);
+      if (!m) return;
+      const end = Number(m[2]);
+      const start = performance.now();
+      const step = (now) => {
+        const t = Math.min(1, (now - start) / 1200);
+        el.textContent = t < 1 ? m[1] + Math.round(end * (1 - (1 - t) ** 3)) + m[3] : text;
+        if (t < 1) requestAnimationFrame(step);
+      };
+      el.textContent = m[1] + '0' + m[3];
+      requestAnimationFrame(step);
+    };
+    const counter = new IntersectionObserver((entries) => entries.forEach((entry) => {
+      if (entry.isIntersecting) { counter.unobserve(entry.target); count(entry.target); }
+    }));
+    $$('.stat dt').forEach((el) => counter.observe(el));
+  }
+
   /* ---------- enquiry form → pre-filled email ---------- */
   const form = $('#enquiry-form');
   if (!form) return;

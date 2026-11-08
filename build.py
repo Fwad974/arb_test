@@ -253,11 +253,14 @@ LOGO_INLINE = (f'<svg class="logo" viewBox="{LOGO_VIEWBOX}" aria-hidden="true" f
                f'<path fill="currentColor" d="{_letters}"/><g class="logo__bar">{_bar}{_glints}'
                f'<path class="logo__kanji" fill="#fff" d="{_kanji}"/></g></svg>')
 
-# Runs before first paint. Marks JS as available, and plays the logo's intro only when the
-# visitor arrives from another site or types the address, not on every page inside the site.
-# Reading the referrer stores nothing on the visitor's device.
-HEAD_SCRIPT = ("(function(d){d.classList.add('js');try{var r=document.referrer;"
-               "if(!r||new URL(r).host!==location.host)d.classList.add('logo-intro')}catch(x){}})"
+# Runs before first paint. Marks JS as available; turns on the motion layer (styles.css,
+# "motion") only when the browser can watch scrolling and the visitor has not asked for reduced
+# motion; and plays the logo's intro only when the visitor arrives from another site or types the
+# address, not on every page inside the site. Reading the referrer stores nothing on the device.
+HEAD_SCRIPT = ("(function(d){d.classList.add('js');"
+               "if('IntersectionObserver'in window&&matchMedia('(prefers-reduced-motion: no-preference)').matches)"
+               "d.classList.add('motion');"
+               "try{var r=document.referrer;if(!r||new URL(r).host!==location.host)d.classList.add('logo-intro')}catch(x){}})"
                "(document.documentElement)")
 
 

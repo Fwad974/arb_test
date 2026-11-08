@@ -9,7 +9,7 @@
  * Every layout, error and contrast check runs in light AND dark mode, and the
  * page must look identical with the browser's forced dark mode switched on.
  * Checks: horizontal overflow at 8 widths (320-2560px), JS errors, AA text
- * contrast, headline on the first screen, large screens using their width, the logo, mobile menu, anchors clearing the
+ * contrast, headline on the first screen, large screens using their width, the logo, motion, mobile menu, anchors clearing the
  * sticky header, contact form behaviour, redirects from old addresses, no
  * cookies, no leftover research notes in the legal text, and for the translated
  * sites (/ar/, /zh/, /ja/): lang/dir, untranslated text, the language menu and the forms.
@@ -51,6 +51,9 @@ function serve() {
   const browser = await chromium.launch();
   const failures = [];
   const fail = (msg) => failures.push(msg);
+  // Wait for page-load and reveal animations to end before measuring positions.
+  const settle = (p) => p.evaluate(() => Promise.all(document.getAnimations()
+    .filter((a) => a.timeline === document.timeline).map((a) => a.finished.catch(() => {}))));
   if (SHOTS) fs.mkdirSync(OUT, { recursive: true });
 
   // 1. Layout + errors + contrast across widths, in both colour schemes
@@ -110,6 +113,7 @@ function serve() {
       }
     }
     if (SHOTS && scheme === 'light' && (width === 375 || width === 1440)) {
+      await page.emulateMedia({ reducedMotion: 'reduce' });  // full-page shots: no reveal, all content
       for (const name of ['index.html', 'services.html', 'advisory.html', 'about.html', 'contact.html', 'ar/index.html', 'ar/about.html', 'ar/contact.html', 'zh/index.html', 'zh/contact.html', 'ja/index.html', 'ja/contact.html']) {
         await page.goto(base + name);
         await page.screenshot({ path: path.join(OUT, `${name.replace('.html', '').replace('/', '-')}-${width}.png`), fullPage: true });
@@ -124,7 +128,7 @@ function serve() {
   for (const name of ['index.html', 'ar/index.html', 'zh/index.html', 'ja/index.html', 'about.html', 'contact.html']) {
     const shots = [];
     for (const b of [browser, forced]) {
-      const p = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
+      const p = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark', reducedMotion: 'reduce' });
       await p.goto(base + name);
       // Finish the logo intro first, so both screenshots show the same frame.
       await p.evaluate(async () => { await document.fonts.ready; document.getAnimations().forEach((a) => a.finish()); });
@@ -143,6 +147,7 @@ function serve() {
     const p = await browser.newPage({ viewport: { width: w, height: h } });
     await p.goto(base + home);
     await p.evaluate(() => document.fonts.ready);
+    await settle(p);
     const bottom = await p.evaluate((s) => document.querySelector(s).getBoundingClientRect().bottom, sel);
     if (bottom > h) fail(`${home} @${w}x${h}: "${sel}" below the first screen (${Math.round(bottom)}px)`);
     await p.close();
@@ -156,6 +161,7 @@ function serve() {
       const name = dir + file;
       await p.goto(base + name);
       await p.evaluate(() => document.fonts.ready);
+      await settle(p);
       const m = await p.evaluate(() => {
         const box = (s) => { const el = document.querySelector(s); return el && el.getBoundingClientRect(); };
         const h1 = box('.hero h1'), beside = box('.hero--home .stats') || box('.hero__side');
@@ -185,7 +191,7 @@ function serve() {
   // 4. Anchors clear the sticky header
   await page.setViewportSize({ width: 1280, height: 800 });
   for (const target of ['advisory.html#finance', 'about.html#partnership', 'sectors.html#education', 'ar/advisory.html#finance', 'ja/advisory.html#finance']) {
-    await page.goto(base + target); await page.waitForTimeout(400);
+    await page.goto(base + target); await page.waitForTimeout(400); await settle(page);
     const [top, header] = await page.evaluate((id) => [document.getElementById(id).getBoundingClientRect().top, document.querySelector('.site-header').getBoundingClientRect().bottom], target.split('#')[1]);
     if (top < header) fail(`${target}: target hidden under sticky header (${Math.round(top)} < ${Math.round(header)})`);
   }
@@ -334,6 +340,50 @@ function serve() {
   if ((await logoAnims(rm)).some((n) => n.startsWith('logo-'))) fail('logo animates with reduced motion requested');
   await rm.close();
 
+  // 6d. Motion: the page header rises in, blocks below the first screen start hidden and are all
+  //     revealed by scrolling, nothing on the first screen is ever hidden, the figures count up
+  //     to the page's own numbers, and the header gains its shadow. With reduced motion or
+  //     without JavaScript, nothing is hidden and nothing animates.
+  for (const name of ['index.html', 'about.html', 'ar/index.html', 'zh/services.html', 'ja/sectors.html']) {
+    const mp = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    await mp.goto(base + name);
+    const start = await mp.evaluate(() => ({
+      motion: document.documentElement.classList.contains('motion'),
+      rise: getComputedStyle(document.querySelector('.hero h1')).animationName,
+      hidden: document.querySelectorAll('.reveal').length,
+      onScreen: [...document.querySelectorAll('.reveal')].filter((el) => el.getBoundingClientRect().top < innerHeight).length,
+    }));
+    if (!start.motion || start.rise !== 'rise') fail(`${name}: page header does not rise in (${JSON.stringify(start)})`);
+    if (!start.hidden) fail(`${name}: no blocks reveal on scroll`);
+    if (start.onScreen) fail(`${name}: ${start.onScreen} block(s) on the first screen start hidden`);
+    for (let y = 0; y < 15000; y += 350) { await mp.evaluate((y) => scrollTo(0, y), y); await mp.waitForTimeout(50); }
+    await mp.waitForTimeout(1500);
+    await settle(mp);
+    const end = await mp.evaluate(() => ({
+      left: document.querySelectorAll('.reveal:not(.is-in)').length,
+      faint: [...document.querySelectorAll('.reveal')].filter((el) => getComputedStyle(el).opacity !== '1').length,
+      shadow: document.querySelector('.site-header').classList.contains('is-scrolled'),
+      stats: [...document.querySelectorAll('.stat dt')].map((d) => d.textContent).join(','),
+    }));
+    if (end.left || end.faint) fail(`${name}: ${end.left + end.faint} block(s) still hidden after scrolling to the end`);
+    if (!end.shadow) fail(`${name}: header shadow missing after scrolling`);
+    if (name.endsWith('index.html') && end.stats !== '8,7,26') fail(`${name}: figures ended as ${end.stats}, expected 8,7,26`);
+    await mp.close();
+  }
+  for (const opts of [{ reducedMotion: 'reduce' }, { javaScriptEnabled: false }]) {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, ...opts });
+    const sp = await ctx.newPage();
+    await sp.goto(base + 'index.html');
+    const still = await sp.evaluate(() => ({
+      motion: document.documentElement.classList.contains('motion'),
+      hidden: document.querySelectorAll('.reveal').length,
+      rise: getComputedStyle(document.querySelector('.hero h1')).animationName,
+      stats: [...document.querySelectorAll('.stat dt')].map((d) => d.textContent).join(','),
+    }));
+    if (still.motion || still.hidden || still.rise !== 'none' || still.stats !== '8,7,26') fail(`${JSON.stringify(opts)}: expected a still page with everything visible, got ${JSON.stringify(still)}`);
+    await ctx.close();
+  }
+
   // 7. Old Wix addresses redirect to the new pages
   for (const [old, now] of [['home-1.html', 'services.html'], ['blank-3.html', 'advisory.html'], ['terms-and-coniditions.html', 'terms.html']]) {
     await page.goto(base + old);
@@ -349,5 +399,5 @@ function serve() {
   await browser.close();
   server.close();
   if (failures.length) { console.error(`QA FAILED (${failures.length})\n  ` + failures.join('\n  ')); process.exit(1); }
-  console.log(`QA passed: ${pages.length} pages (English, Arabic, Chinese, Japanese) x 8 widths x light/dark, contrast, forced dark, first screen, large screens, logo, menus, anchors, forms, language menu, messaging, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
+  console.log(`QA passed: ${pages.length} pages (English, Arabic, Chinese, Japanese) x 8 widths x light/dark, contrast, forced dark, first screen, large screens, logo, motion, menus, anchors, forms, language menu, messaging, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
 })();
