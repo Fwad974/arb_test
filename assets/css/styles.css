@@ -592,6 +592,7 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 .trust { padding-block: clamp(2.5rem, 5vw, 4rem); }
 .trust__head { margin-bottom: 2rem; text-align: center; }
 .trust__head h2 { font-size: 1.25rem; letter-spacing: -0.01em; }
+.trust__head h2 .tone { color: var(--muted); }  /* the light second tone is for large headlines only */
 .trust__head p { max-width: 40em; margin: 0.375rem auto 0; color: var(--muted); font-size: 0.9375rem; }
 .marquee { position: relative; }
 .marquee__viewport { display: grid; gap: 1.25rem; }
@@ -606,7 +607,9 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 }
 .marquee.is-moving .marquee__row + .marquee__row { animation-direction: reverse; }
 .marquee.is-moving .marquee__row li { flex: 0 0 auto; width: 11rem; padding-inline: 1.25rem; }
-.marquee.is-moving:hover .marquee__row, .marquee.is-moving:focus-within .marquee__row,
+/* Only the logos pause on hover and focus: the button must restart the strip while it has focus. */
+.marquee.is-moving .marquee__viewport:hover .marquee__row,
+.marquee.is-moving .marquee__viewport:focus-within .marquee__row,
 .marquee.is-paused .marquee__row { animation-play-state: paused; }
 @keyframes marquee { to { transform: translateX(-50%); } }
 .marquee__toggle {
