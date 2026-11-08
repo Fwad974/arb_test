@@ -220,8 +220,40 @@ def logos(items, cls=''):
     return f'<ul class="logos {cls}">' + ''.join(out) + '</ul>'
 
 
-BRAND = 'brand/elevate-wordmark.webp'            # original beige wordmark, for dark backgrounds
-BRAND_DARK = 'brand/elevate-wordmark-dark.webp'  # navy variant for light backgrounds (beige on white is 2.4:1)
+# The wordmark is one SVG master file, traced from the original artwork. The header inlines it,
+# so the letters follow the theme colour (navy on white, beige in dark mode) and the red bar can
+# draw itself in and lift on hover (see .logo in styles.css). The footer, which is always dark,
+# shows a beige copy as an image; main() writes that copy into dist/.
+LOGO_SVG = (ROOT / 'assets' / 'images' / 'brand' / 'elevate-wordmark.svg').read_text(encoding='utf-8')
+LOGO_VIEWBOX = re.search(r'viewBox="([^"]+)"', LOGO_SVG).group(1)
+LOGO_RATIO = (lambda v: v[2] / v[3])([float(x) for x in LOGO_VIEWBOX.split()])
+LOGO_BEIGE = '#b4a298'                               # the original beige, for dark backgrounds
+LOGO_LIGHT = 'brand/elevate-wordmark-light.svg'      # generated beige copy, for the footer
+
+
+def _logo_part(pattern):
+    found = re.search(pattern, LOGO_SVG)
+    if not found:
+        raise ValueError(f'elevate-wordmark.svg: missing {pattern}')
+    return found.group(1)
+
+
+_letters = _logo_part(r'<path id="logo-letters"[^>]*?\sd="([^"]+)"')
+_kanji = _logo_part(r'<path id="logo-kanji"[^>]*?\sd="([^"]+)"')
+_bar = _logo_part(r'(<line [^>]+/>)').replace('<line ', '<line class="logo__line" ', 1)
+if 'color="#0f2137"' not in LOGO_SVG:
+    raise ValueError('elevate-wordmark.svg: the root <svg> needs color="#0f2137" (the footer copy swaps it)')
+LOGO_INLINE = (f'<svg class="logo" viewBox="{LOGO_VIEWBOX}" aria-hidden="true" focusable="false">'
+               f'<path fill="currentColor" d="{_letters}"/><g class="logo__bar">{_bar}'
+               f'<path class="logo__kanji" fill="#fff" d="{_kanji}"/></g></svg>')
+
+# Runs before first paint. Marks JS as available, and plays the logo's intro only when the
+# visitor arrives from another site or types the address, not on every page inside the site.
+# Reading the referrer stores nothing on the visitor's device.
+HEAD_SCRIPT = ("(function(d){d.classList.add('js');try{var r=document.referrer;"
+               "if(!r||new URL(r).host!==location.host)d.classList.add('logo-intro')}catch(x){}})"
+               "(document.documentElement)")
+
 
 # Old Wix addresses -> new pages. GitHub Pages serves /home-1 from home-1.html,
 # so a small redirect page keeps old links and search results working.
@@ -461,14 +493,14 @@ def layout(slug, title, description, body):
 <link rel="icon" href="{asset("images/favicon.svg")}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{asset("images/apple-touch-icon.png")}">
 {preloads}<link rel="stylesheet" href="{asset("css/styles.css")}">
-<script>document.documentElement.classList.add('js')</script>
+<script>{HEAD_SCRIPT}</script>
 <script src="{asset("js/app.js")}" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#main">{e(t("skip"))}</a>
 <header class="site-header">
   <div class="wrap site-header__inner">
-    <a class="brand" href="index.html"><picture><source srcset="{asset("images/" + BRAND)}" media="(prefers-color-scheme: dark)">{img(BRAND_DARK, t("home_alt"), height=26, lazy=False)}</picture></a>
+    <a class="brand" href="index.html" aria-label="{e(t("home_alt"))}">{LOGO_INLINE}</a>
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="{e(t("menu_open"))}" data-label-open="{e(t("menu_open"))}" data-label-close="{e(t("menu_close"))}">{icon("menu", "icon")}{icon("close", "icon")}</button>
     <nav class="site-nav" id="site-nav" aria-label="{e(t("nav_label"))}">
       {nav}
@@ -484,7 +516,7 @@ def layout(slug, title, description, body):
   <div class="wrap">
     <div class="footer-grid">
       <div>
-        <a class="brand" href="index.html">{img(BRAND, t("home_alt"), height=28)}</a>
+        <a class="brand" href="index.html"><img src="{asset("images/" + LOGO_LIGHT)}" alt="{e(t("home_alt"))}" width="{round(28 * LOGO_RATIO)}" height="28" loading="lazy" decoding="async"></a>
         <p class="footer-tagline">{e(C.SITE["tagline"])}</p>
       </div>
       <div>
@@ -940,6 +972,8 @@ def main():
         shutil.rmtree(OUT)
     OUT.mkdir()
     shutil.copytree(ROOT / 'assets', OUT / 'assets')
+    (OUT / 'assets' / 'images' / LOGO_LIGHT).write_text(
+        LOGO_SVG.replace('color="#0f2137"', f'color="{LOGO_BEIGE}"', 1), encoding='utf-8')
 
     built = {mod.LANG['code']: build_language(mod) for mod in LANGS}
     set_language(EN)

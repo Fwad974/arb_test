@@ -20,6 +20,7 @@
   --surface: #f6f2ea;        /* warm sand panels and form */
   --field-bg: #ffffff;
   --ink: #0f2137;            /* navy headings (16.2:1) */
+  --logo: #0f2137;           /* wordmark letters: navy on white */
   --text: #1c2430;           /* charcoal body copy (15.6:1) */
   --muted: #55606d;          /* secondary copy (6.4:1 on white, 5.7:1 on sand) */
   --tone: #7a8793;           /* second tone in large headlines only (3.7:1) */
@@ -56,6 +57,7 @@
     --surface: #122233;
     --field-bg: #0e1b29;
     --ink: #f2f4f7;          /* 16.5:1 */
+    --logo: #b4a298;         /* the original beige wordmark */
     --text: #d5dbe3;         /* 13.1:1 */
     --muted: #9eabb9;        /* 7.8:1, 6.9:1 on surface */
     --tone: #7d8b9a;         /* 5.2:1, large text only */
@@ -196,8 +198,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .site-header__inner { min-height: var(--header-h); display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1.5rem; }
 .brand { display: inline-flex; align-items: center; margin-inline-end: auto; padding-block: 0.5rem; }
-.brand img { height: 1.625rem; width: auto; }
-.site-footer .brand img { height: 1.75rem; }
+.brand img { height: 1.75rem; width: auto; }
+
+/* The header logo is inline SVG (build.py, LOGO_INLINE): the letters follow the theme, and the
+   red bar, the logo's own "elevate" stroke, draws itself in when a visitor arrives and lifts
+   along its own angle on hover. Distances are in the logo's viewBox units (1760 x 384). */
+.brand { color: var(--logo); }
+.logo { display: block; height: 1.625rem; width: auto; aspect-ratio: 1760 / 384; overflow: visible; }
+.logo__bar { transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.brand:hover .logo__bar, .brand:focus-visible .logo__bar { transform: translate(17.6px, -31.4px); }
+@media (prefers-reduced-motion: no-preference) {
+  .logo-intro .site-header .logo__line { animation: logo-draw 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) 0.25s both; }
+  .logo-intro .site-header .logo__kanji { animation: logo-fade 0.45s ease-out 0.8s both; }
+}
+@keyframes logo-draw { from { stroke-dasharray: 1 2; stroke-dashoffset: 1; } to { stroke-dasharray: 1 2; stroke-dashoffset: 0; } }
+@keyframes logo-fade { from { fill-opacity: 0; } }  /* fill-opacity, not opacity: painted on the main thread, so it never lags the draw */
 .site-nav { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 2rem; }
 .site-nav > a:not(.button) { padding-block: 0.5rem; color: var(--text); text-decoration: none; font-size: 0.9375rem; }
 .site-nav > a:not(.button):hover { color: var(--accent-text); text-decoration: underline; }
