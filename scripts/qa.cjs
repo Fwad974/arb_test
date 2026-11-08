@@ -52,9 +52,14 @@ function serve() {
   const browser = await chromium.launch();
   const failures = [];
   const fail = (msg) => failures.push(msg);
-  // Wait for page-load and reveal animations to end before measuring positions.
-  const settle = (p) => p.evaluate(() => Promise.all(document.getAnimations()
-    .filter((a) => a.timeline === document.timeline).map((a) => a.finished.catch(() => {}))));
+  // Wait for page-load and reveal animations to end before measuring positions. Looping
+  // animations (the moving logo strip) never end, so they are skipped, and 5 s is the limit.
+  const settle = (p) => p.evaluate(() => Promise.race([
+    Promise.all(document.getAnimations()
+      .filter((a) => a.timeline === document.timeline && a.effect && a.effect.getComputedTiming().endTime !== Infinity)
+      .map((a) => a.finished.catch(() => {}))),
+    new Promise((done) => setTimeout(done, 5000)),
+  ]));
   if (SHOTS) fs.mkdirSync(OUT, { recursive: true });
 
   // 1. Layout + errors + contrast across widths, in both colour schemes
@@ -132,7 +137,7 @@ function serve() {
       const p = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark', reducedMotion: 'reduce' });
       await p.goto(base + name);
       // Finish the logo intro first, so both screenshots show the same frame.
-      await p.evaluate(async () => { await document.fonts.ready; document.getAnimations().forEach((a) => a.finish()); });
+      await p.evaluate(async () => { await document.fonts.ready; document.getAnimations().filter((a) => a.effect && a.effect.getComputedTiming().endTime !== Infinity).forEach((a) => a.finish()); });
       shots.push(await p.screenshot({ animations: 'disabled' }));
       await p.close();
     }
