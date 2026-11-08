@@ -93,10 +93,30 @@
         reveal.unobserve(entry.target);
       });
     }, { rootMargin: '0px 0px -8% 0px' });
+    // A block holding a link target (#finance) must not rise after the browser has scrolled to
+    // it, or it ends up under the sticky header: show it at once instead.
+    const show = (id) => {
+      const target = id && document.getElementById(id);
+      if (!target) return;
+      targets.forEach((el) => {
+        if (el.contains(target) && el.classList.contains('reveal')) {
+          el.style.transition = 'none';
+          el.classList.add('is-in');
+          reveal.unobserve(el);
+        }
+      });
+    };
     const fold = window.innerHeight;
+    const linked = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
     targets.forEach((el) => {
-      if (el.getBoundingClientRect().top >= fold) { el.classList.add('reveal'); reveal.observe(el); }
+      if (el.getBoundingClientRect().top >= fold && !(linked && el.contains(linked))) { el.classList.add('reveal'); reveal.observe(el); }
     });
+    // In-page links: show the target's block before the browser scrolls to it.
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href*="#"]');
+      if (a && a.pathname === location.pathname) show(decodeURIComponent(a.hash.slice(1)));
+    });
+    window.addEventListener('hashchange', () => show(decodeURIComponent(location.hash.slice(1))));
 
     // Figures (8, 7, 26) count up from zero when they come into view, ending on the page's own text.
     const count = (el) => {
