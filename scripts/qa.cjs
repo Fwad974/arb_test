@@ -10,7 +10,7 @@
  * page must look identical with the browser's forced dark mode switched on.
  * Checks: horizontal overflow at 8 widths (320-2560px), JS errors, AA text
  * contrast, headline on the first screen, large screens using their width, the logo, motion,
- * the moving logo strip and its pause button, mobile menu, anchors clearing the
+ * the moving logo strip and its pause button, the landing animation, mobile menu, anchors clearing the
  * sticky header, contact form behaviour, redirects from old addresses, no
  * cookies, no leftover research notes in the legal text, and for the translated
  * sites (/ar/, /zh/, /ja/): lang/dir, untranslated text, the language menu and the forms.
@@ -52,9 +52,14 @@ function serve() {
   const browser = await chromium.launch();
   const failures = [];
   const fail = (msg) => failures.push(msg);
-  // Wait for page-load and reveal animations to end before measuring positions.
-  const settle = (p) => p.evaluate(() => Promise.all(document.getAnimations()
-    .filter((a) => a.timeline === document.timeline).map((a) => a.finished.catch(() => {}))));
+  // Wait for page-load and reveal animations to end before measuring positions. Looping
+  // animations (the moving logo strip) never end, so they are skipped, and 5 s is the limit.
+  const settle = (p) => p.evaluate(() => Promise.race([
+    Promise.all(document.getAnimations()
+      .filter((a) => a.timeline === document.timeline && a.effect && a.effect.getComputedTiming().endTime !== Infinity)
+      .map((a) => a.finished.catch(() => {}))),
+    new Promise((done) => setTimeout(done, 5000)),
+  ]));
   if (SHOTS) fs.mkdirSync(OUT, { recursive: true });
 
   // 1. Layout + errors + contrast across widths, in both colour schemes
@@ -132,7 +137,7 @@ function serve() {
       const p = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark', reducedMotion: 'reduce' });
       await p.goto(base + name);
       // Finish the logo intro first, so both screenshots show the same frame.
-      await p.evaluate(async () => { await document.fonts.ready; document.getAnimations().forEach((a) => a.finish()); });
+      await p.evaluate(async () => { await document.fonts.ready; document.getAnimations().filter((a) => a.effect && a.effect.getComputedTiming().endTime !== Infinity).forEach((a) => a.finish()); });
       shots.push(await p.screenshot({ animations: 'disabled' }));
       await p.close();
     }
@@ -300,10 +305,11 @@ function serve() {
   if ((await cp.textContent('#wechat .copy-button')).trim() !== 'Copied') fail('WeChat copy button gave no feedback');
   await ctx.close();
 
-  // 6c. Logo: inline SVG whose letters follow the theme. The intro (letters one by one, the red
-  //     line drawing up, the kanji fading in) plays on arrival and on every home page load, but
-  //     not on other pages inside the site. The bar lifts on hover, nothing moves with reduced
-  //     motion, and the footer's beige copy loads.
+  // 6c. Logo: inline SVG whose letters follow the theme. On arrival the landing animation forms
+  //     the wordmark (letters one by one, the red line drawing up, the kanji fading in); back on
+  //     the home page from inside the site, the header logo plays the same intro; other pages
+  //     inside the site play neither. The bar lifts on hover, nothing moves with reduced motion,
+  //     and the footer's beige copy loads.
   const logoAnims = (p) => p.evaluate(() => document.getAnimations().map((a) => a.animationName).filter(Boolean));
   for (const scheme of ['light', 'dark']) {
     const lp = await browser.newPage({ viewport: { width: 1280, height: 800 }, colorScheme: scheme });
@@ -312,9 +318,10 @@ function serve() {
     const want = scheme === 'light' ? 'rgb(15, 33, 55)' : 'rgb(180, 162, 152)';
     if (fill !== want) fail(`logo letters in ${scheme} mode are ${fill}, expected ${want}`);
     if (scheme === 'light') {
-      if (!(await lp.evaluate(() => document.documentElement.classList.contains('logo-intro')))) fail('logo intro did not play on arrival');
-      const arrival = await logoAnims(lp);
+      if (!(await lp.evaluate(() => document.documentElement.classList.contains('splash-active')))) fail('landing animation did not play on arrival');
+      const arrival = await lp.evaluate(() => [...document.querySelectorAll('.splash__logo *')].flatMap((el) => el.getAnimations()).map((a) => a.animationName));
       for (const name of ['logo-letter', 'logo-draw', 'logo-fade']) if (!arrival.includes(name)) fail(`logo: ${name} missing on arrival`);
+      await lp.waitForSelector('.splash', { state: 'detached', timeout: 5000 }).catch(() => fail('landing animation did not end'));
       await settle(lp);
       await lp.hover('.site-header .brand');
       await lp.waitForTimeout(800);
@@ -378,12 +385,13 @@ function serve() {
     const sp = await ctx.newPage();
     await sp.goto(base + 'index.html');
     const still = await sp.evaluate(() => ({
+      curtain: getComputedStyle(document.querySelector('.splash')).display,
       motion: document.documentElement.classList.contains('motion'),
       hidden: document.querySelectorAll('.reveal').length,
       rise: getComputedStyle(document.querySelector('.hero h1')).animationName,
       stats: [...document.querySelectorAll('.stat dt')].map((d) => d.textContent).join(','),
     }));
-    if (still.motion || still.hidden || still.rise !== 'none' || still.stats !== '8,7,26') fail(`${JSON.stringify(opts)}: expected a still page with everything visible, got ${JSON.stringify(still)}`);
+    if (still.curtain !== 'none' || still.motion || still.hidden || still.rise !== 'none' || still.stats !== '8,7,26') fail(`${JSON.stringify(opts)}: expected a still page with everything visible, got ${JSON.stringify(still)}`);
     await ctx.close();
   }
 
@@ -431,6 +439,49 @@ function serve() {
     await still.close();
   }
 
+  // 6f. Landing animation: on arrival (no referrer) a curtain covers the page while the wordmark
+  //     forms and the header logo waits; the wordmark then glides into the header as the curtain
+  //     lifts, and within 3.5 s everything is gone and the header logo shows. A key press skips
+  //     it, and it does not play when moving between pages or with reduced motion.
+  for (const [name, vp] of [['index.html', { width: 1280, height: 800 }], ['ar/index.html', { width: 1280, height: 800 }],
+    ['ja/services.html', { width: 375, height: 740 }]]) {
+    const sp = await browser.newPage({ viewport: vp });
+    await sp.goto(base + name);
+    const first = await sp.evaluate(() => {
+      const curtain = document.querySelector('.splash');
+      const r = curtain.getBoundingClientRect();
+      return { active: document.documentElement.classList.contains('splash-active'),
+        covers: getComputedStyle(curtain).display !== 'none' && r.width >= innerWidth && r.height >= innerHeight,
+        headerLogo: getComputedStyle(document.querySelector('.site-header .logo')).visibility };
+    });
+    if (!first.active || !first.covers || first.headerLogo !== 'hidden') fail(`${name}: landing animation did not start (${JSON.stringify(first)})`);
+    const glide = await sp.waitForFunction(() => {
+      const mark = document.querySelector('.splash__logo');
+      if (!mark) return 'gone';
+      return mark.getAnimations().some((a) => !(a instanceof CSSAnimation)) ? 'glide' : false;
+    }, null, { timeout: 3000, polling: 50 }).then((h) => h.jsonValue(), () => 'timeout');
+    if (glide !== 'glide') fail(`${name}: the wordmark did not glide into the header (${glide})`);
+    const ended = await sp.waitForSelector('.splash', { state: 'detached', timeout: 3500 }).then(() => true, () => false);
+    const after = await sp.evaluate(() => ({ active: document.documentElement.classList.contains('splash-active'),
+      headerLogo: getComputedStyle(document.querySelector('.site-header .logo')).visibility }));
+    if (!ended || after.active || after.headerLogo !== 'visible') fail(`${name}: landing animation did not end cleanly (${JSON.stringify(after)})`);
+    await sp.close();
+  }
+  {
+    const kp = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    await kp.goto(base + 'about.html');
+    await kp.waitForTimeout(300);
+    await kp.keyboard.press('Shift');
+    if (!(await kp.waitForSelector('.splash', { state: 'detached', timeout: 1000 }).then(() => true, () => false))) fail('landing animation: a key press does not skip it');
+    await kp.goto(base + 'services.html', { referer: base + 'about.html' });
+    if (await kp.evaluate(() => document.documentElement.classList.contains('splash-active'))) fail('landing animation plays on pages inside the site');
+    await kp.close();
+    const rp = await browser.newPage({ reducedMotion: 'reduce' });
+    await rp.goto(base + 'index.html');
+    if (await rp.evaluate(() => document.documentElement.classList.contains('splash-active') || getComputedStyle(document.querySelector('.splash')).display !== 'none')) fail('landing animation plays with reduced motion requested');
+    await rp.close();
+  }
+
   // 7. Old Wix addresses redirect to the new pages
   for (const [old, now] of [['home-1.html', 'services.html'], ['blank-3.html', 'advisory.html'], ['terms-and-coniditions.html', 'terms.html']]) {
     await page.goto(base + old);
@@ -446,5 +497,5 @@ function serve() {
   await browser.close();
   server.close();
   if (failures.length) { console.error(`QA FAILED (${failures.length})\n  ` + failures.join('\n  ')); process.exit(1); }
-  console.log(`QA passed: ${pages.length} pages (English, Arabic, Chinese, Japanese) x 8 widths x light/dark, contrast, forced dark, first screen, large screens, logo, motion, logo strip, menus, anchors, forms, language menu, messaging, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
+  console.log(`QA passed: ${pages.length} pages (English, Arabic, Chinese, Japanese) x 8 widths x light/dark, contrast, forced dark, first screen, large screens, logo, landing animation, motion, logo strip, menus, anchors, forms, language menu, messaging, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
 })();

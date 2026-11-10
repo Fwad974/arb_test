@@ -275,17 +275,21 @@ LOGO_INLINE = (f'<svg class="logo" viewBox="{LOGO_VIEWBOX}" aria-hidden="true" f
                f'<g fill="currentColor">'
                + ''.join(f'<path class="logo__letter" style="--n:{i}" d="{d}"/>' for i, d in enumerate(_letters))
                + f'</g><g class="logo__bar">{_bar}<path class="logo__kanji" fill="#fff" d="{_kanji}"/></g></svg>')
+# The same wordmark, large, on the landing curtain (see "landing animation" in styles.css).
+LOGO_SPLASH = LOGO_INLINE.replace('<svg class="logo"', '<svg class="logo splash__logo"', 1)
 
-# Runs before first paint. Marks JS as available; turns on the motion layer (styles.css,
+# Runs before first paint. Marks JS as available and turns on the motion layer (styles.css,
 # "motion") only when the browser can watch scrolling and the visitor has not asked for reduced
-# motion; and plays the logo's intro on every home page load (data-home) and whenever a visitor
-# arrives from another site or types the address, but not on other pages inside the site.
-# Reading the referrer stores nothing on the visitor's device.
+# motion. A landing (a visitor arriving from another site or typing the address) plays the
+# landing animation (splash-active); otherwise the home page plays the header logo's own intro
+# (logo-intro), and other pages inside the site play neither. Reading the referrer stores
+# nothing on the visitor's device.
 HEAD_SCRIPT = ("(function(d){d.classList.add('js');"
-               "if('IntersectionObserver'in window&&matchMedia('(prefers-reduced-motion: no-preference)').matches)"
-               "d.classList.add('motion');"
-               "try{var r=document.referrer;if(d.hasAttribute('data-home')||!r||new URL(r).host!==location.host)"
-               "d.classList.add('logo-intro')}catch(x){}})"
+               "var m='IntersectionObserver'in window&&matchMedia('(prefers-reduced-motion: no-preference)').matches;"
+               "if(m)d.classList.add('motion');"
+               "try{var r=document.referrer,l=!r||new URL(r).host!==location.host;"
+               "if(m&&l)d.classList.add('splash-active','intro-wait');"
+               "else if(l||d.hasAttribute('data-home'))d.classList.add('logo-intro')}catch(x){}})"
                "(document.documentElement)")
 
 
@@ -539,6 +543,7 @@ def layout(slug, title, description, body):
 <script src="{asset("js/app.js")}" defer></script>
 </head>
 <body>
+<div class="splash" aria-hidden="true"><div class="splash__curtain"><p class="splash__line">{e(t("hero_eyebrow"))}</p></div>{LOGO_SPLASH}</div>
 <a class="skip-link" href="#main">{e(t("skip"))}</a>
 <header class="site-header">
   <div class="wrap site-header__inner">
