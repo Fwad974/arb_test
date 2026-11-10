@@ -188,6 +188,33 @@ function serve() {
     await p.close();
   }
 
+  // 2c. Home header photo: on wide screens a panel the full height of the header, running to the
+  //     screen edge (the left edge in Arabic) and clear of the text; on smaller screens a band the
+  //     full width of the screen above the headline. Its caption names the place.
+  for (const dir of ['', 'ar/']) for (const [w, h] of [[1280, 720], [1440, 900], [1920, 1080], [2560, 1440], [1024, 768], [390, 844]]) {
+    const p = await browser.newPage({ viewport: { width: w, height: h }, reducedMotion: 'reduce' });
+    await p.goto(base + dir + 'index.html');
+    await p.evaluate(() => document.fonts.ready);
+    const m = await p.evaluate(() => {
+      const r = (el) => el.getBoundingClientRect();
+      return { hero: r(document.querySelector('.hero--home')), photo: r(document.querySelector('.hero__photo')), h1: r(document.querySelector('.hero h1')),
+        text: [...document.querySelectorAll('.hero--home .wrap > *')].map(r), vw: document.documentElement.clientWidth,
+        rtl: document.dir === 'rtl', place: (document.querySelector('.hero__place') || {}).textContent || '' };
+    });
+    const name = `${dir}index.html @${w}px`;
+    if (w >= 1200) {
+      const short = m.rtl ? m.photo.left : m.vw - m.photo.right;
+      if (Math.abs(short) > 1) fail(`${name}: header photo stops ${Math.round(short)}px short of the screen edge`);
+      if (Math.abs(m.photo.top - m.hero.top) > 1 || Math.abs(m.photo.bottom - m.hero.bottom) > 1) fail(`${name}: header photo is not the full height of the header`);
+      if (m.text.some((t) => (m.rtl ? t.left < m.photo.right : t.right > m.photo.left))) fail(`${name}: header text runs under the photo`);
+    } else {
+      if (m.photo.left > 0.5 || m.photo.width < m.vw - 1) fail(`${name}: header photo band is not the full width of the screen`);
+      if (m.photo.bottom > m.h1.top) fail(`${name}: header photo band is not above the headline`);
+    }
+    if (!m.place.trim()) fail(`${name}: header photo caption does not name the place`);
+    await p.close();
+  }
+
   const page = await browser.newPage({ viewport: { width: 375, height: 800 } });
   // 3. Mobile menu
   await page.goto(base + 'index.html');

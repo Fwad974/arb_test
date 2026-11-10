@@ -334,8 +334,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .stat dd { margin: 0.375rem 0 0; color: var(--muted); font-size: 0.9375rem; }
 
 /* Wide screens: the hero uses its full width. Inner pages put the intro and actions beside
-   the headline from 1100px. The home page keeps them under its longer headline and puts the
-   stats beside it from 1200px, where the headline still fits on three lines. */
+   the headline from 1100px. The home page keeps them under its longer headline, with the
+   Jeddah photo beside them (below). */
 @media (min-width: 1100px) {
   .hero:not(.hero--home) .wrap { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); column-gap: clamp(3rem, 5vw, 6rem); align-items: end; }
   .hero .breadcrumb, .hero .nf-alts { grid-column: 1 / -1; }
@@ -343,35 +343,57 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .hero:not(.hero--home) .hero__side { grid-column: 2; padding-bottom: 0.35em; }
   .hero:not(.hero--home) .hero__side .lead { margin-top: 0; }
 }
-@media (min-width: 1200px) {
-  .hero--home .wrap { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); column-gap: clamp(3rem, 5vw, 6rem); align-items: end; }
-  .hero--home .stats { grid-column: 1 / -1; grid-row: 3; margin-top: clamp(2.5rem, 4vw, 3.5rem); }
-}
 
-/* ---------- home header photo: King Fahd's Fountain, Jeddah ----------
-   Beside the headline from 1200px (a tall crop, the figures in a row of three below both);
-   under the buttons on smaller screens (a wide crop, the figures below it). With
-   motion it rises into view, a wipe from the bottom, as the page header comes in; after a
-   landing that is just as the curtain lifts (--intro). */
-.hero__photo {
-  position: relative; margin: clamp(2rem, 5vw, 3rem) 0 0; aspect-ratio: 16 / 9;
-  border-radius: var(--radius); overflow: hidden; background: #08111b;
+/* ---------- home header photo: Jeddah ----------
+   Phones and tablets: a band the full width of the screen across the top of the header,
+   above the headline. From 1200px: a panel the full height of the header on the end side,
+   running to the edge of the screen, with the headline, intro, buttons and figures in the
+   column beside it; the header then fills the first screen (up to 62rem). With motion the
+   photo opens upwards from its foot as the page header comes in, and settles from a slight
+   zoom; after a landing, that is as the curtain lifts (--intro). */
+.hero--home { display: flex; flex-direction: column; padding-top: 0; }
+.hero--home .wrap { padding-top: clamp(2rem, 5vw, 3.5rem); }
+.hero__photo { order: -1; position: relative; margin: 0; aspect-ratio: 2 / 1; max-height: 45vh; max-height: 45svh; overflow: hidden; background: #08111b; }
+.hero__photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: var(--focus-wide, 50% 50%); }
+/* The place, and the photographer's credit when the licence asks for one, in small type on a
+   soft shade at the foot of the photo (the same in both themes). */
+.hero__caption {
+  position: absolute; inset-inline: 0; bottom: 0; display: flex; flex-wrap: wrap; align-items: baseline;
+  justify-content: space-between; gap: 0.25rem 1.25rem; padding: 2.75rem var(--gutter) 0.75rem;
+  color: #fff; font-size: 0.75rem; line-height: 1.45;
+  background: linear-gradient(to top, rgba(8, 17, 27, 0.78), rgba(8, 17, 27, 0));
 }
-.hero__photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hero__place { font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+:root:is([lang="ar"], [lang="zh-Hans"], [lang="ja"]) .hero__place { letter-spacing: 0; }
+.hero__credit { color: rgba(255, 255, 255, 0.86); }
+.hero__credit a { color: inherit; text-underline-offset: 2px; }
+.hero__credit a:hover { color: #fff; }
+.hero__caption a:focus-visible { outline-color: #fff; }
 @media (min-width: 700px) {
-  /* a wider frame on tablets, so the photo does not take over the first screen */
-  .hero__photo { aspect-ratio: 21 / 9; }
-  .hero__photo img { object-position: 50% 25%; }
+  .hero__photo { aspect-ratio: 3 / 1; max-height: 40vh; max-height: 40svh; }
 }
 @media (min-width: 1200px) {
-  .hero--home .hero__photo { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; margin: 0; aspect-ratio: auto; min-height: 24rem; }
+  .hero--home {
+    --hero-photo-w: clamp(24rem, 38vw, 62rem);
+    --hero-gap: clamp(3rem, 5vw, 6rem);
+    position: relative; justify-content: center;
+    min-height: calc(100vh - var(--header-h));
+    min-height: min(calc(100svh - var(--header-h)), 62rem);
+    padding-top: clamp(2.5rem, 5.5vw, 5rem);
+  }
+  .hero--home .wrap { padding-top: 0; }
+  /* the column ends a gap before the photo: 50vw + 50% is the column's end edge on screen */
+  .hero--home .wrap > * { max-width: calc(50vw + 50% - var(--hero-photo-w) - var(--hero-gap)); }
+  .hero__photo { position: absolute; inset-block: 0; inset-inline-end: 0; width: var(--hero-photo-w); aspect-ratio: auto; max-height: none; }
+  .hero__photo img { object-position: var(--focus-tall, 50% 50%); }
+  .hero__caption { padding: 3.5rem 1.5rem 1rem; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .motion .hero__photo { animation: photo-rise 1.3s var(--glide) calc(var(--intro, 0s) + 0.12s) both; }
   .motion .hero__photo img { animation: photo-settle 2.4s var(--glide) calc(var(--intro, 0s) + 0.12s) both; }
   .motion .hero--home :is(.stats) { animation-delay: calc(var(--intro, 0s) + 0.55s); }
 }
-@keyframes photo-rise { from { clip-path: inset(100% 0 0 0 round var(--radius)); } to { clip-path: inset(0 0 0 0 round var(--radius)); } }
+@keyframes photo-rise { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0); } }
 @keyframes photo-settle { from { transform: scale(1.14); } }
 
 /* ---------- services page: one block per service, with the live site's text ---------- */

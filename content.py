@@ -365,6 +365,18 @@ CLIENTS_NETWORK = [
 # Holdings, not Elevate (see docs/review-status.md, finding 2). They stay hidden
 # until confirmed. Set SHOW_PARTNER_CLIENTS = True only with written permission
 # for each logo; they then appear on the About page, labelled as the partner's.
+# Home page header photo, in assets/images/brand/ (see the README, "Home page photo"). The tall
+# crop fills the panel beside the headline from 1200px wide; the wide crop is the band above it
+# on smaller screens. focus_* place each crop in its frame (CSS object-position). author,
+# license, license_url and source_url give the credit the licence asks for, shown on the photo;
+# leave author empty for a public-domain or CC0 photo.
+HERO_PHOTO = dict(
+    tall='jeddah-fountain-portrait', tall_widths=(480, 800, 1200),
+    wide='jeddah-fountain-landscape', wide_widths=(800, 1280, 1920),
+    focus_tall='50% 50%', focus_wide='50% 30%',
+    author='', license='', license_url='', source_url='',
+)
+
 SHOW_PARTNER_CLIENTS = False
 PARTNER_CLIENTS_LABEL = 'Clients of our partner Hirayama Holdings'
 CLIENTS_GLOBAL = [
@@ -669,4 +681,6 @@ UI = dict(
         'Our mission acts as a compass, influencing key strategic decisions in the ethos of continuously improving, branding, product innovation, partnerships and much more.',
         'By being a mission with a company, rather than a company with a mission, we leverage our brand to solve problems for individuals, companies, and our region. In turn, we gain insights into services that push the boundaries of what’s possible, to grow our business and build a better world for our region.',
     ],
+    hero_photo_place="King Fahd's Fountain, Jeddah",
+    photo_credit='Photo',
 )

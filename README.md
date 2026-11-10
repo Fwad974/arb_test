@@ -59,7 +59,7 @@ Open http://localhost:8000. Rebuild after each edit with `python3 build.py`.
 | Translations (same structure, text only) | `content_ar.py`, `content_zh.py`, `content_ja.py` |
 | Site logo (vector master) | `assets/images/brand/elevate-wordmark.svg` |
 | Client logos, team photos, brand photos | `assets/images/` (WebP) |
-| Home page header photo (Jeddah) | `assets/images/brand/jeddah-fountain-*.webp`, source in `assets/images/brand/CREDITS.md` |
+| Home page header photo (Jeddah) | `HERO_PHOTO` in `content.py`, its files in `assets/images/brand/`, sources in `assets/images/brand/CREDITS.md` |
 | Preparing a new client logo | `scripts/prepare_logos.py` (needs Pillow and NumPy, see below) |
 | Page templates and layout | `build.py` |
 | Styles and design tokens | `assets/css/styles.css` |
@@ -266,11 +266,20 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
   change the logo, edit the SVG in a vector editor. Keep the seven letter paths (one per letter,
   in order) inside `<g id="logo-letters">`, the id `logo-kanji`, the red bar as one `<line>`, and
   `color="#0f2137"` on the root.
-- **Home page photo:** a night view of King Fahd's Fountain in Jeddah sits beside the headline.
-  It opens upwards from its foot as the landing curtain lifts, and settles from a slight zoom.
-  Wide screens get a portrait crop and smaller screens a landscape one, each in three sizes. To
-  change it, replace the six `jeddah-fountain-*.webp` files at the same sizes and update
-  `CREDITS.md`. The photo is public domain (CC0), so it needs no credit on the page.
+- **Home page photo:** a photo of Jeddah, named in a small caption on it, fills the end side of
+  the home page header.
+  - **Wide screens (from 1200px):** a panel the full height of the header, running to the edge of
+    the screen, beside the headline, intro, buttons and figures. The header then fills the first
+    screen (up to 62rem tall). In Arabic the panel is on the left.
+  - **Smaller screens:** a band the full width of the screen, above the headline.
+  - **Motion:** it opens upwards from its foot as the landing curtain lifts, and settles from a
+    slight zoom.
+  - **To change it:** set `HERO_PHOTO` in `content.py`. It lists a tall crop (the panel) and a
+    wide crop (the band), each in three sizes in `assets/images/brand/`, and the focus point of
+    each crop. It also holds the photographer's credit, if the licence asks for one; the credit
+    then appears in the caption, linked to the source and the licence. The caption's place name
+    is `hero_photo_place` in each language's `UI`. Record the source in
+    `assets/images/brand/CREDITS.md`.
 - **Motion:** the logo's red line is the motif. Every movement is short and vertical and uses one
   easing curve (`--glide`: a quick start and a long, soft finish).
   - Page headers rise in, one line after another, as the page opens.
@@ -308,7 +317,8 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
   two-column sections (heading on the start side, content on the end side), stacking to one
   column below 900px. On wide screens the section heading stays in view while its content
   scrolls past. From 1100px wide, page headers put the intro beside the headline, and from
-  1200px the home page puts the Jeddah photo beside it, with the three figures in a row below.
+  1200px the home page's header fills the first screen, with the Jeddah photo running to the
+  screen edge beside it.
   The team list fills four columns.
 
 ## Contact form
