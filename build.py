@@ -663,11 +663,16 @@ def hero_photo():
     fallback = asset(f'images/brand/{wide}-{ph["wide_widths"][1]}.webp')
     credit = ''
     if ph['author']:
-        ext = ' target="_blank" rel="noopener"' + ('' if C is EN else ' lang="en"')
+        # dir="ltr" keeps the Latin name and licence whole inside Arabic text; the licence asks
+        # that changes be noted, hence "cropped".
+        ext = ' target="_blank" rel="noopener" dir="ltr"'
         sr = f'<span class="visually-hidden">{e(t("new_tab"))}</span>'
-        credit = (f'<span class="hero__credit">{e(t("photo_credit"))} '
-                  f'<a href="{e(ph["source_url"])}"{ext}>{e(ph["author"])}{sr}</a> · '
-                  f'<a href="{e(ph["license_url"])}"{ext}>{e(ph["license"])}{sr}</a></span>')
+        name = e(ph['author']) if C is EN else f'<span lang="en">{e(ph["author"])}</span>'
+        label = t('photo_credit')
+        sep = '' if label.endswith('：') else ' '
+        credit = (f'<span class="hero__credit">{e(label)}{sep}'
+                  f'<a href="{e(ph["source_url"])}"{ext}>{name}{sr}</a> · '
+                  f'<a href="{e(ph["license_url"])}"{ext}>{e(ph["license"])}{sr}</a> · {e(t("photo_cropped"))}</span>')
     focus = f'--focus-tall: {ph["focus_tall"]}; --focus-wide: {ph["focus_wide"]}'
     return (f'<figure class="hero__photo" style="{focus}"><picture>'
             f'<source media="(min-width: 1200px)" srcset="{srcset(tall, ph["tall_widths"])}" '
