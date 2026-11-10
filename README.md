@@ -266,13 +266,21 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
   change the logo, edit the SVG in a vector editor. Keep the seven letter paths (one per letter,
   in order) inside `<g id="logo-letters">`, the id `logo-kanji`, the red bar as one `<line>`, and
   `color="#0f2137"` on the root.
-- **Home page photo:** Nasseef House in Historic Jeddah (Al-Balad), the district's best-known
-  merchant house, fills the end side of the home page header. A small caption on it names the
-  place. It replaced a night view of King Fahd's Fountain, which did not read as Jeddah.
-  - **Source:** a photo by Diego Delso, chosen from about 290 freely licensed photos of the
-    old town, the waterfront and the skyline. It is licensed CC BY-SA 4.0, so the caption
-    credits him, links to the source and the licence, and says the photo is cropped.
-    The cropped files are shared under the same licence (see `CREDITS.md`).
+- **Home page photo:** the Jeddah waterfront and its new towers at dusk fill the end side of the
+  home page header, as an image of the city's development. A small caption on it names the
+  place. The lit spire on the far horizon is very likely the Jeddah Tower under construction.
+  The caption does not name it, because the photo's own description does not.
+  - **History:** it replaced a night view of King Fahd's Fountain (not recognisably Jeddah),
+    then a photo of Nasseef House in the old town; the owner asked for modern development and
+    technology instead.
+  - **How it was chosen:** a panel of three judges chose it from about 260 freely licensed
+    photos of the waterfront and new skyline, the Haramain railway stations, the airport, the
+    Jeddah Tower and KAUST, scoring each for city identity, how it crops and how it fits the
+    brand. Its blue-hour
+    sky matches the navy of the headline and the dark theme.
+  - **Source:** a photo by the Saudi Press Agency (SPA), from its Creative Commons portal, licensed
+    CC BY-SA 4.0. The caption credits the agency, links to the source and the licence, and says
+    the photo is cropped. The cropped files are shared under the same licence (see `CREDITS.md`).
   - **Wide screens (from 1200px):** a panel the full height of the header, running to the edge of
     the screen, beside the headline, intro, buttons and figures. The header then fills the first
     screen (up to 62rem tall). In Arabic the panel is on the left.
