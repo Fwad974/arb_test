@@ -136,8 +136,15 @@ function serve() {
     for (const b of [browser, forced]) {
       const p = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark', reducedMotion: 'reduce' });
       await p.goto(base + name);
-      // Finish the logo intro first, so both screenshots show the same frame.
-      await p.evaluate(async () => { await document.fonts.ready; document.getAnimations().filter((a) => a.effect && a.effect.getComputedTiming().endTime !== Infinity).forEach((a) => a.finish()); });
+      // Finish the logo intro first, so both screenshots show the same frame. Wait, too, for the
+      // images on screen to decode: the home photo decodes asynchronously, and a screenshot taken
+      // before then shows an empty box in one browser and the photo in the other.
+      await p.evaluate(async () => {
+        await document.fonts.ready;
+        await Promise.all([...document.images].filter((i) => { const r = i.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; })
+          .map((i) => i.decode().catch(() => {})));
+        document.getAnimations().filter((a) => a.effect && a.effect.getComputedTiming().endTime !== Infinity).forEach((a) => a.finish());
+      });
       shots.push(await p.screenshot({ animations: 'disabled' }));
       await p.close();
     }
