@@ -6,6 +6,68 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+  /* ---------- landing animation (see "landing animation" in styles.css) ----------
+     The CSS runs the sequence on its own. This glides the wordmark into its place in the
+     header as the curtain lifts, lets any click, tap, key or scroll skip it, and tells the rest
+     of the page (pageShown) when the curtain starts to lift. */
+  const root = document.documentElement;
+  let showPage;
+  const pageShown = new Promise((resolve) => { showPage = resolve; });
+  const splash = $('.splash');
+  if (splash && root.classList.contains('splash-active')) {
+    const LIFT = 1550;  // ms: when the curtain starts to lift (styles.css)
+    const GLIDE = 850;  // ms: how long it takes
+    const curtain = $('.splash__curtain', splash);
+    const mark = $('.splash__logo', splash);
+    const target = $('.site-header .logo');
+    const EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
+    let ended = false;
+    const end = () => {
+      if (ended) return;
+      ended = true;
+      EVENTS.forEach((type) => window.removeEventListener(type, skip, true));
+      root.classList.remove('splash-active');
+      splash.remove();
+      showPage();
+    };
+    function skip() {
+      if (ended || splash.classList.contains('is-skipped')) return;
+      splash.classList.add('is-skipped');
+      root.classList.remove('intro-wait');  // the page header rises in now
+      showPage();
+      setTimeout(end, 250);
+    }
+    EVENTS.forEach((type) => window.addEventListener(type, skip, { capture: true, passive: true }));
+    // How far the CSS sequence has already run (it started with the first paint).
+    const lift = curtain.getAnimations().find((a) => a.animationName === 'splash-lift');
+    const elapsed = lift && lift.currentTime !== null ? Number(lift.currentTime) : 0;
+    if (elapsed > LIFT) {
+      // This script arrived late: let the CSS lift the wordmark away with the curtain.
+      showPage();
+      setTimeout(end, Math.max(0, LIFT + GLIDE - elapsed));
+    } else {
+      setTimeout(() => {
+        if (ended) return;
+        showPage();
+        const from = mark.getBoundingClientRect();
+        const to = target ? target.getBoundingClientRect() : null;
+        if (!to || !to.width || !from.width) { setTimeout(end, GLIDE); return; }
+        mark.style.animation = 'none';
+        mark.animate([
+          { transform: 'none' },
+          { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${to.width / from.width})` },
+        ], { duration: GLIDE, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' }).finished.then(end, end);
+        // The letters take the header's colour only once the curtain has passed the top of the
+        // screen (about 0.35 s into the lift), so they never vanish against the navy.
+        mark.animate([{ color: getComputedStyle(mark).color }, { color: getComputedStyle(target).color }],
+          { delay: 320, duration: 280, easing: 'ease-out', fill: 'both' });
+      }, LIFT - elapsed);
+    }
+    setTimeout(end, 4500);  // safety net
+  } else {
+    showPage();
+  }
+
   /* ---------- mobile navigation ---------- */
   const toggle = $('.nav-toggle');
   const nav = $('#site-nav');
@@ -134,7 +196,7 @@
       requestAnimationFrame(step);
     };
     const counter = new IntersectionObserver((entries) => entries.forEach((entry) => {
-      if (entry.isIntersecting) { counter.unobserve(entry.target); count(entry.target); }
+      if (entry.isIntersecting) { counter.unobserve(entry.target); pageShown.then(() => count(entry.target)); }
     }));
     $$('.stat dt').forEach((el) => counter.observe(el));
 

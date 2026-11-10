@@ -147,6 +147,7 @@ setting on Android browsers) leaves the page exactly as designed.
 It covers all four languages, and also checks that the headline and main button are on the first screen of a 1280×720 laptop,
 that 1920px and 2560px screens get larger text, content across most of the width and the intro beside the headline,
 that the logo follows the theme, plays its intro on arrival and on the home page but not on other pages, lifts on hover, and stays still with reduced motion,
+that the landing animation covers the page on arrival, glides the wordmark into the header, ends within 3.5 seconds, skips on a key press, and never plays between pages or with reduced motion,
 that scrolling reveals every block while nothing on the first screen starts hidden, and that reduced motion or no JavaScript gives a still page,
 that the moving logo strip sits under the home page header, pauses with its button and is a still grid with reduced motion,
 and tests the mobile menu, anchor offsets under the sticky header, contact form validation, the
@@ -188,17 +189,26 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
   7167px artwork. The header inlines it, so it is sharp at any size and its letters follow the
   theme: navy on the white header (beige on white is only 2.4:1, so confirm the navy with the
   brand owner) and the original beige in dark mode.
-  - **Intro:** one calm sequence of about 1.6 seconds. The seven letters fade up one after
-    another, the red line (the logo's own "elevate" stroke) draws up out of the V in a single
-    smooth stroke, and the 改善 (kaizen) mark fades in.
-  - **When it plays:** every time the home page opens, so it shows when you present the site,
-    and when a visitor arrives on any page from another site or by typing the address. It does
-    not replay on other pages inside the site. It reads only the referrer and stores nothing on
-    the visitor's device.
+  - **Landing animation:** when a visitor arrives from another site or types the address, a
+    navy curtain fills the screen and the wordmark forms on it in its original colours. The
+    seven letters fade up one after another, the red line (the logo's own "elevate" stroke)
+    draws up out of the V, the 改善 (kaizen) mark appears, and the tagline rises in underneath.
+    A red hairline then draws across the foot of the screen, and the curtain lifts, the page
+    "elevating" into view, while the wordmark glides up into its place in the header and takes
+    the header's colour. The page header rises in behind it.
+    - It lasts about 2.4 seconds, and any click, tap, key or scroll skips it.
+    - To replay it while presenting, reload the page.
+    - It never plays with reduced motion switched on in the visitor's system settings, or
+      without JavaScript. The CSS ends it on its own, so the page is never left covered even if
+      `app.js` fails to load.
+    - The code is the "landing animation" parts of `styles.css` and `app.js`.
+  - **Home page intro:** back on the home page from inside the site, the header logo plays the
+    same letter-by-letter intro on its own (about 1.6 seconds). Other pages inside the site play
+    neither. Both read only the referrer, and store nothing on the visitor's device.
   - **On hover or keyboard focus:** the red line lifts gently along its own angle.
-  - **Limits:** motion that starts on its own ends within 2 seconds, as WCAG 2.2.2 requires, so
-    the logo never loops at the edge of the visitor's view. With reduced motion switched on in
-    the visitor's system settings, the logo stays still.
+  - **Limits:** motion that starts on its own ends within 2.5 seconds, as WCAG 2.2.2 requires, so
+    the logo never loops at the edge of the visitor's view. With reduced motion, the logo stays
+    still.
 
   The footer, which is always dark, shows a beige copy that the build writes to `dist/`. To
   change the logo, edit the SVG in a vector editor. Keep the seven letter paths (one per letter,

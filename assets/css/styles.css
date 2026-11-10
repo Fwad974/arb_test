@@ -647,6 +647,68 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
   }
 }
 
+/* ---------- landing animation ----------
+   When a visitor lands from another site or types the address (the head script sets
+   .splash-active, and only when motion is allowed), a navy curtain shows the wordmark forming in
+   its original colours: the letters fade up one by one, the red line draws up out of the V,
+   改善 appears and the tagline rises in. A red hairline draws across the foot of the screen,
+   then the curtain lifts, the page "elevating" into view, while app.js glides the wordmark into
+   its place in the header. About 2.4 s; any click, tap, key or scroll skips it. The CSS ends it
+   on its own, so the page is never left covered even if app.js does not run. */
+.splash { display: none; }
+.splash-active .splash {
+  --splash-w: min(68vw, 30rem);
+  --splash-h: calc(var(--splash-w) * 384 / 1760);
+  display: block; position: fixed; inset: 0; z-index: 200;
+  animation: splash-end 0.01s linear 2.45s both;
+}
+.splash.is-skipped { opacity: 0; transition: opacity 0.25s ease-out; }
+.splash__curtain {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(52rem 32rem at 88% -12%, rgba(44, 76, 112, 0.6), transparent 70%),
+    radial-gradient(34rem 22rem at 104% 40%, rgba(192, 0, 0, 0.14), transparent 72%),
+    #0f2137;
+  animation: splash-lift 0.85s var(--glide) 1.55s both;
+}
+[dir="rtl"] .splash__curtain {
+  background:
+    radial-gradient(52rem 32rem at 12% -12%, rgba(44, 76, 112, 0.6), transparent 70%),
+    radial-gradient(34rem 22rem at -4% 40%, rgba(192, 0, 0, 0.14), transparent 72%),
+    #0f2137;
+}
+/* the red hairline along the curtain's foot: it draws across, then rises with the curtain */
+.splash__curtain::after {
+  content: ""; position: absolute; inset-inline: 0; bottom: 0; height: 2px;
+  background: var(--accent); transform-origin: left center;
+  animation: draw 0.7s var(--glide) 0.95s both;
+}
+[dir="rtl"] .splash__curtain::after { transform-origin: right center; }
+.splash__line {
+  position: absolute; inset-inline: 1.25rem; top: calc(50% + var(--splash-h) / 2 + 1.75rem);
+  margin: 0; text-align: center; color: rgba(255, 255, 255, 0.74);
+  font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+  /* it fades just before the lift, so the faster curtain never carries it across the wordmark */
+  animation: rise 0.8s var(--glide) 0.75s both, splash-fade 0.25s ease-in 1.35s forwards;
+}
+:root[lang="ar"] .splash__line, :root[lang="zh-Hans"] .splash__line, :root[lang="ja"] .splash__line { letter-spacing: 0.04em; }
+.splash__logo {
+  position: absolute; inset: 0; margin: auto; width: var(--splash-w); height: var(--splash-h);
+  color: #b4a298; transform-origin: 0 0;
+  animation: splash-lift 0.85s var(--glide) 1.55s both;  /* app.js replaces this with the glide into the header */
+}
+.splash__logo .logo__letter { animation: logo-letter 0.8s var(--glide) both; animation-delay: calc(0.12s + var(--n) * 60ms); }
+.splash__logo .logo__line { animation: logo-draw 0.9s var(--glide) 0.5s both; }
+.splash__logo .logo__kanji { animation: logo-fade 0.5s ease-out 1s both; }
+@keyframes splash-lift { to { transform: translateY(-100vh); } }
+@keyframes splash-end { to { visibility: hidden; } }
+@keyframes splash-fade { to { opacity: 0; } }
+@keyframes splash-show { from { visibility: hidden; } to { visibility: visible; } }
+/* The header logo waits for the gliding wordmark to land, and the page header rises in as the
+   curtain lifts (--intro delays the page header's own entrance, see "motion"). */
+.splash-active .site-header .logo { animation: splash-show 0.01s linear 2.4s both; }
+.intro-wait { --intro: 1.75s; }
+
 /* ---------- motion ----------
    The logo's red line is the motif. Page headers rise in, blocks rise into view as they scroll
    in, the red dashes before labels draw themselves, the figures count up, a red line under the
@@ -662,11 +724,11 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 .motion[dir="rtl"] .eyebrow::before { transform-origin: right center; }
 
 /* Page header: label, headline, intro and figures rise in one after another. */
-.motion .hero :is(.breadcrumb, .eyebrow, h1, .hero__side, .stats, .nf-alts) { animation: rise 0.9s var(--glide) both; }
-.motion .hero h1 { animation-delay: 0.08s; }
-.motion .hero .hero__side { animation-delay: 0.18s; }
-.motion .hero :is(.stats, .nf-alts) { animation-delay: 0.28s; }
-.motion .hero .eyebrow::before { animation: draw 0.8s var(--glide) 0.3s both; }
+.motion .hero :is(.breadcrumb, .eyebrow, h1, .hero__side, .stats, .nf-alts) { animation: rise 0.9s var(--glide) both; animation-delay: var(--intro, 0s); }
+.motion .hero h1 { animation-delay: calc(var(--intro, 0s) + 0.08s); }
+.motion .hero .hero__side { animation-delay: calc(var(--intro, 0s) + 0.18s); }
+.motion .hero :is(.stats, .nf-alts) { animation-delay: calc(var(--intro, 0s) + 0.28s); }
+.motion .hero .eyebrow::before { animation: draw 0.8s var(--glide) calc(var(--intro, 0s) + 0.3s) both; }
 
 /* Blocks below the first screen: app.js adds .reveal, then .is-in as each scrolls into view,
    with --i staggering the blocks that arrive together. */
@@ -720,7 +782,7 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 }
 
 @media print {
-  .site-header, .nav-toggle, .cta, .form { display: none; }
+  .site-header, .nav-toggle, .cta, .form, .splash { display: none !important; }
   .motion .reveal { opacity: 1 !important; transform: none !important; }
   .motion .hero * { animation: none !important; }
   .section { padding-block: 1.5rem; }
