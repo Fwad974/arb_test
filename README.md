@@ -55,9 +55,11 @@ Open http://localhost:8000. Rebuild after each edit with `python3 build.py`.
 |---|---|
 | WhatsApp number, WeChat ID and QR code, LINE Official Account | `site.env` |
 | English copy: services, sectors, team, contact details, social links, client logos, legal text, interface text | `content.py` |
+| The eight services on the Services page (approach, support areas, outcomes) | `SERVICE_AREAS` in `content.py` |
 | Translations (same structure, text only) | `content_ar.py`, `content_zh.py`, `content_ja.py` |
 | Site logo (vector master) | `assets/images/brand/elevate-wordmark.svg` |
 | Client logos, team photos, brand photos | `assets/images/` (WebP) |
+| Home page header photo (Jeddah) | `assets/images/brand/jeddah-fountain-*.webp`, source in `assets/images/brand/CREDITS.md` |
 | Preparing a new client logo | `scripts/prepare_logos.py` (needs Pillow and NumPy, see below) |
 | Page templates and layout | `build.py` |
 | Styles and design tokens | `assets/css/styles.css` |
@@ -76,6 +78,41 @@ Switches in `content.py`:
   then appear on the About page, labelled as Hirayama Holdings' clients.
 - `SITE['social']`: add real profile URLs to show social links; nothing is shown until you do.
 - `LEGAL_UPDATED`: the "Last updated" date on the Terms and Privacy pages. Change it whenever the legal text changes.
+
+## Text from the live site
+
+All the text on www.elevatearabia.com is on this site, in all four languages, apart from the
+few things listed below. That covers the home page, the eight services with their approach, support areas and outcomes, the sector
+pages, the story, mission and six values, the partner's history, the team's roles, and the
+legal pages. The last comparison with the live site, page by page and including the text
+behind its tabs, was on 10 November 2026.
+
+- `SERVICE_AREAS` in `content.py` holds the eight services as the live site words them. The
+  Services page shows each one in full: the approach, the typical support areas, and what the
+  service helps to achieve.
+- The home page's service list, the Advisory page's three disciplines, and the Automotive
+  Industrial Consultancy and Construction Technology pages use the same entries. Their `area=`
+  key in `SERVICES` names the entry they use, so each text exists once.
+
+Some things were changed or left out on purpose:
+
+- **"Over 1500 companies found their solutions with us"** is left out. The figure appears to
+  be the partner's, not Elevate Arabia's. Add it back only once it is confirmed for Elevate.
+- **Social links:** the live site's LinkedIn, Facebook and Instagram icons point to Wix
+  template accounts, not to Elevate's profiles. Add the real ones in `SITE['social']`.
+- **Terms and Conditions:** six sentences that read as research notes ("Saudi official
+  website terms commonly…", "SDAIA states that…", "The PDPL is the principal Saudi law…") are
+  left out. Every clause itself is here.
+- **Privacy Policy:** the line about cookies is left out, because the site sets no cookies.
+- **Format only:** phone numbers are spaced ("+966 53 333 7712"), the address reads "Jeddah,
+  Saudi Arabia", and the live site's "01:", "02:" label numbering is replaced by the design's
+  own section labels.
+- **Corrections:** "Natural Development" now reads "National Development", and spelling
+  ("Cearer", "eveyone", "focussing") and grammar in one team role are corrected.
+
+Two claims come from the live site unchanged and should be checked before launch: the
+partner's revenue figure (JPY 8.84 billion in Q1 FY2025) and "your project is 40% faster" for
+Quadratech.
 
 ## Messaging apps (`site.env`)
 
@@ -229,6 +266,11 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
   change the logo, edit the SVG in a vector editor. Keep the seven letter paths (one per letter,
   in order) inside `<g id="logo-letters">`, the id `logo-kanji`, the red bar as one `<line>`, and
   `color="#0f2137"` on the root.
+- **Home page photo:** a night view of King Fahd's Fountain in Jeddah sits beside the headline.
+  It opens upwards from its foot as the landing curtain lifts, and settles from a slight zoom.
+  Wide screens get a portrait crop and smaller screens a landscape one, each in three sizes. To
+  change it, replace the six `jeddah-fountain-*.webp` files at the same sizes and update
+  `CREDITS.md`. The photo is public domain (CC0), so it needs no credit on the page.
 - **Motion:** the logo's red line is the motif. Every movement is short and vertical and uses one
   easing curve (`--glide`: a quick start and a long, soft finish).
   - Page headers rise in, one line after another, as the page opens.
@@ -264,8 +306,10 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
   visitor's own browser text size, so a larger default text setting makes the whole site larger.
 - **Layout:** 76rem max width (1216px on a laptop, about 1520px on a 2560px screen) and
   two-column sections (heading on the start side, content on the end side), stacking to one
-  column below 900px. From 1100px wide, page headers put the intro beside the headline, and
-  from 1200px the home page puts its three figures beside it. The team list fills four columns.
+  column below 900px. On wide screens the section heading stays in view while its content
+  scrolls past. From 1100px wide, page headers put the intro beside the headline, and from
+  1200px the home page puts the Jeddah photo beside it, with the three figures in a row below.
+  The team list fills four columns.
 
 ## Contact form
 
