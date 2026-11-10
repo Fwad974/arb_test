@@ -564,8 +564,7 @@ UI = dict(
 
     about_statement='We help clients build stronger businesses with greater clarity, control, and confidence.',
     values_eyebrow='Values', values_heading='What we [value.]',
-    partnership_eyebrow='International partnership', partnership_heading='A shared focus on [improvement.]',
-    partnership_body='Elevate is about constantly striving for good changes, from small improvements to big achievements. We believe that, following this concept, we can do something to care more for ourselves, for others, and for the planet.',
+    partnership_eyebrow='International partnership',
     partner_location='Tokyo, Japan. Manufacturing capability, continuous improvement and industrial consulting.',
     visit_partner='Visit Hirayama Holdings',
     team_eyebrow='Meet the team', team_heading='Experience behind [the work.]',
@@ -660,12 +659,14 @@ UI = dict(
         'Aligned with Saudi growth opportunities',
         'Relevant to both established firms and new ventures',
     ],
-    story_eyebrow='Mission',
     story_heading='Our [story.]',
     story_body=[
+        'Elevate is about constantly striving for good changes, from small improvements to big achievements. We believe that, following this concept, we can do something to care more for ourselves, for others, and for the planet.',
+        'It is with this in mind that both Elevate and Hirayama made the conscious and strategic decision to introduce the true ethos of Kaizen to the Middle East. This is not just about training. Rather, it is all about changing a mindset to embrace continuous success through nurturing improvement in oneself and the company to create efficiency.',
+    ],
+    values_intro=[
         'To become the prominent Middle East company focusing on the Japanese-based Kaizen Management System and imparting its true values into our regional process-driven companies.',
         'Our mission acts as a compass, influencing key strategic decisions in the ethos of continuously improving, branding, product innovation, partnerships and much more.',
         'By being a mission with a company, rather than a company with a mission, we leverage our brand to solve problems for individuals, companies, and our region. In turn, we gain insights into services that push the boundaries of what’s possible, to grow our business and build a better world for our region.',
     ],
-    partnership_body_more='It is with this in mind that both Elevate and Hirayama made the conscious and strategic decision to introduce the true ethos of Kaizen to the Middle East. This is not just about training. Rather, it is all about changing a mindset to embrace continuous success through nurturing improvement in oneself and the company to create efficiency.',
 )

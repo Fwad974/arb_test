@@ -92,8 +92,9 @@ def e(text):
 
 
 def hl(text):
-    """Escape a headline and render [bracketed] text in the second tone."""
-    return re.sub(r'\[(.+?)\]', r'<span class="tone">\1</span>', e(text))
+    """Escape a headline and render [bracketed] text in the second tone. The <wbr> gives Chinese
+    headings, which otherwise break only at punctuation, a break point where the tone starts."""
+    return re.sub(r'\[(.+?)\]', r'<wbr><span class="tone">\1</span>', e(text))
 
 
 def asset(path):
@@ -251,6 +252,7 @@ def trust_strip(items):
 <section class="section trust" id="clients">
   <div class="wrap">
     <div class="trust__head">
+      <p class="eyebrow">{e(t("clients_eyebrow"))}</p>
       <h2>{hl(t("clients_heading"))}</h2>
       <p>{e(t("clients_intro"))}</p>
     </div>
@@ -823,19 +825,16 @@ def build_about():
         t('who_eyebrow'), t('about_who_heading'),
         plain_list(t('about_who_list'), numbered=True)
         + f'<blockquote class="statement"><p>{e(t("about_statement"))}</p></blockquote>')
-    story_paras = t('story_body')
+
+    def paras(texts):
+        return f'<p class="body-lg">{e(texts[0])}</p>' + ''.join(f'<p class="body-more">{e(x)}</p>' for x in texts[1:])
+
+    # As on the live About page: "Our story" is how Elevate and Hirayama came to bring Kaizen to
+    # the Middle East, beside the two teams' photo; the mission opens "What we value".
     story = section(
-        t('story_eyebrow'), t('story_heading'),
-        f'<p class="body-lg">{e(story_paras[0])}</p>' + ''.join(f'<p class="body-more">{e(x)}</p>' for x in story_paras[1:]))
-    values = section(
-        t('values_eyebrow'), t('values_heading'),
-        '<ul class="grid-values">' + ''.join(
-            f'<li><span class="area__num">{num(i + 1)}</span><h3>{e(x)}</h3><p>{e(d)}</p></li>'
-            for i, (x, d) in enumerate(C.VALUES)) + '</ul>')
-    partner = section(
-        t('partnership_eyebrow'), t('partnership_heading'),
-        f'<p class="body-lg">{e(t("partnership_body"))}</p><p class="body-more">{e(t("partnership_body_more"))}</p>'
-        f'<figure class="photo">{img(C.PARTNER["photo"], C.PARTNER["photo_alt"])}'
+        t('partnership_eyebrow'), t('story_heading'),
+        paras(t('story_body'))
+        + f'<figure class="photo">{img(C.PARTNER["photo"], C.PARTNER["photo_alt"])}'
         f'<figcaption>{e(C.PARTNER["photo_alt"])}{e(t("period"))}</figcaption></figure>'
         f'<div class="panel"><p class="eyebrow">{e(t("partner_eyebrow"))}</p>'
         f'<p class="panel__title">{e(C.PARTNER["name"])}</p>'
@@ -844,6 +843,11 @@ def build_about():
         + (f'<h3 class="group-title group-title--logos">{e(C.PARTNER_CLIENTS_LABEL)}</h3>'
            + logos(C.CLIENTS_GLOBAL) if C.SHOW_PARTNER_CLIENTS else ''),
         id='partnership')
+    values = section(
+        t('values_eyebrow'), t('values_heading'),
+        paras(t('values_intro')) + '<ul class="grid-values">' + ''.join(
+            f'<li><span class="area__num">{num(i + 1)}</span><h3>{e(x)}</h3><p>{e(d)}</p></li>'
+            for i, (x, d) in enumerate(C.VALUES)) + '</ul>')
 
     def avatar(name, photo):
         if photo:
@@ -866,7 +870,7 @@ def build_about():
         f'<h3 class="group-title">{e(t("team_international"))} <span>{len(C.TEAM_INTERNATIONAL)}</span></h3>{people(C.TEAM_INTERNATIONAL)}',
         intro=t('team_intro'), id='team')
     page('about', t('about_title'), t('about_desc'),
-         hero + who + story + values + partner + team + cta(t('about_cta_title'), t('about_cta_body'), t('about_cta_label')))
+         hero + who + story + values + team + cta(t('about_cta_title'), t('about_cta_body'), t('about_cta_label')))
 
 
 def build_contact():
