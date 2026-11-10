@@ -365,6 +365,20 @@ CLIENTS_NETWORK = [
 # Holdings, not Elevate (see docs/review-status.md, finding 2). They stay hidden
 # until confirmed. Set SHOW_PARTNER_CLIENTS = True only with written permission
 # for each logo; they then appear on the About page, labelled as the partner's.
+# Home page header photo, in assets/images/brand/ (see the README, "Home page photo"). The tall
+# crop fills the panel beside the headline from 1200px wide; the wide crop is the band above it
+# on smaller screens. focus_* place each crop in its frame (CSS object-position). author,
+# license, license_url and source_url give the credit the licence asks for, shown on the photo;
+# leave author empty for a public-domain or CC0 photo.
+HERO_PHOTO = dict(
+    tall='jeddah-nasseef-house-tall', tall_widths=(600, 1000, 1500),
+    wide='jeddah-nasseef-house-wide', wide_widths=(800, 1280, 1920),
+    focus_tall='30% 50%', focus_wide='50% 35%',
+    author='Diego Delso', license='CC BY-SA 4.0',
+    license_url='https://creativecommons.org/licenses/by-sa/4.0/',
+    source_url='https://commons.wikimedia.org/wiki/File:Al-Balad,_Yeda,_Arabia_Saudita,_2025-05-24,_DD_12.jpg',
+)
+
 SHOW_PARTNER_CLIENTS = False
 PARTNER_CLIENTS_LABEL = 'Clients of our partner Hirayama Holdings'
 CLIENTS_GLOBAL = [
@@ -605,7 +619,7 @@ UI = dict(
     messaging='Message us', whatsapp='WhatsApp', whatsapp_action='Chat on WhatsApp',
     whatsapp_text='Hello Elevate Arabia, I would like to discuss a project.',
     wechat='WeChat', wechat_hint='Search for this ID in WeChat to add us.', copy='Copy ID', copied='Copied',
-    hero_photo_alt="King Fahd's Fountain on the Jeddah waterfront at night",
+    hero_photo_alt='Nasseef House, a coral-stone merchant house with a carved wooden roshan, in Historic Jeddah (Al-Balad)',
     marquee_pause='Pause the moving logos', marquee_play='Play the moving logos',
     wechat_qr_alt='WeChat QR code for Elevate Arabia', line='LINE', line_action='Add us on LINE',
     # 404
@@ -669,4 +683,7 @@ UI = dict(
         'Our mission acts as a compass, influencing key strategic decisions in the ethos of continuously improving, branding, product innovation, partnerships and much more.',
         'By being a mission with a company, rather than a company with a mission, we leverage our brand to solve problems for individuals, companies, and our region. In turn, we gain insights into services that push the boundaries of what’s possible, to grow our business and build a better world for our region.',
     ],
+    hero_photo_place='Nasseef House, Historic Jeddah',
+    photo_credit='Photo:',
+    photo_cropped='cropped',
 )

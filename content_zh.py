@@ -510,7 +510,7 @@ UI = dict(
     messaging='在线沟通', whatsapp='WhatsApp', whatsapp_action='通过 WhatsApp 联系',
     whatsapp_text='您好，Elevate Arabia，我想洽谈一个项目。',
     wechat='微信', wechat_hint='在微信中搜索此 ID 即可添加我们。', copy='复制 ID', copied='已复制',
-    hero_photo_alt='夜色中吉达海滨的法赫德国王喷泉',
+    hero_photo_alt='吉达历史老城（巴拉德）的纳西夫故居：一座珊瑚石砌成的商人宅邸，带雕花木制凸窗（罗珊）',
     marquee_pause='暂停滚动标志', marquee_play='继续滚动标志',
     wechat_qr_alt='Elevate Arabia 微信二维码', line='LINE', line_action='在 LINE 上添加我们',
     nf_eyebrow='错误 404', nf_title='页面未找到。', nf_lead='您要查找的页面不存在或已被移动。',
@@ -573,6 +573,9 @@ UI = dict(
         '我们的使命如同指南针，以持续改进、品牌建设、产品创新、合作伙伴关系等理念，引导关键的战略决策。',
         '我们是一份拥有公司的使命，而不是一家拥有使命的公司。我们运用自己的品牌，为个人、企业和本地区解决问题；同时，我们也从中获得洞见，推出不断突破可能边界的服务，以发展业务，为本地区建设更美好的世界。',
     ],
+    hero_photo_place='纳西夫故居，吉达历史老城',
+    photo_credit='摄影：',
+    photo_cropped='已裁剪',
 )
 
 complete(globals())

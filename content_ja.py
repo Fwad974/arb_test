@@ -610,7 +610,7 @@ UI = dict(
     messaging='メッセージ', whatsapp='WhatsApp', whatsapp_action='WhatsApp で相談する',
     whatsapp_text='こんにちは、Elevate Arabia さま。プロジェクトについて相談したいです。',
     wechat='WeChat', wechat_hint='WeChat でこの ID を検索して追加してください。', copy='ID をコピー', copied='コピーしました',
-    hero_photo_alt='夜のジッダの海辺にそびえるファハド国王の噴水',
+    hero_photo_alt='ジッダ歴史地区（アル・バラド）のナシーフ・ハウス。サンゴ石造りの商家で、彫刻を施した木製の出窓「ローシャン」がある',
     marquee_pause='ロゴの動きを一時停止', marquee_play='ロゴの動きを再開',
     wechat_qr_alt='Elevate Arabia の WeChat QR コード', line='LINE', line_action='LINE で友だち追加',
     nf_eyebrow='エラー 404', nf_title='ページが見つかりません。', nf_lead='お探しのページは存在しないか、移動した可能性があります。',
@@ -673,6 +673,9 @@ UI = dict(
         '私たちのミッションは羅針盤として、継続的な改善、ブランドづくり、製品のイノベーション、パートナーシップなどの精神のもとで、重要な戦略判断を導きます。',
         'ミッションを持つ会社ではなく、会社を持つミッションとして、私たちはブランドを生かし、個人、企業、そして地域の課題を解決します。その過程で、可能性の限界を広げるサービスへの洞察を得て、事業を成長させ、地域のためにより良い世界を築きます。',
     ],
+    hero_photo_place='ナシーフ・ハウス（ジッダ歴史地区）',
+    photo_credit='写真：',
+    photo_cropped='トリミング',
 )
 
 complete(globals())

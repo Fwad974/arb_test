@@ -364,9 +364,11 @@ def section_wide(eyebrow, heading, body, intro='', id=None):
 </section>'''
 
 
-def page_hero(eyebrow, title, lead, actions='', crumbs=None, extra='', cls=''):
+def page_hero(eyebrow, title, lead, actions='', crumbs=None, extra='', cls='', photo=''):
     """Page header. On wide screens (see .hero in styles.css) the intro and actions sit
-    beside the headline instead of below it, so the first screen uses its full width."""
+    beside the headline instead of below it, so the first screen uses its full width.
+    photo goes outside the centred column, so it can run to the edge of the screen; it comes
+    after the text in the source, so screen readers reach the headline first."""
     crumbs_html = ''
     if crumbs:
         items = ''.join(f'<li><a href="{e(h)}">{e(x)}</a></li>' for x, h in crumbs[:-1])
@@ -387,6 +389,7 @@ def page_hero(eyebrow, title, lead, actions='', crumbs=None, extra='', cls=''):
     </div>
     {extra}
   </div>
+  {photo}
 </section>'''
 
 
@@ -646,19 +649,38 @@ def page(slug, title, description, body):
 # --------------------------------------------------------------------------- pages
 
 def hero_photo():
-    """King Fahd's Fountain on the Jeddah waterfront (CC0, see assets/images/brand/CREDITS.md):
-    a tall crop beside the headline on wide screens, a wide crop under it elsewhere."""
-    def srcset(shape, widths):
-        return ', '.join(f'{asset(f"images/brand/jeddah-fountain-{shape}-{w}.webp")} {w}w' for w in widths)
-    w, h = image_size('brand/jeddah-fountain-landscape-1280.webp')
-    pw, ph = image_size('brand/jeddah-fountain-portrait-800.webp')
-    return (f'<figure class="hero__photo"><picture>'
-            f'<source media="(min-width: 1200px)" srcset="{srcset("portrait", (480, 800, 1200))}" '
-            f'sizes="34vw" width="{pw}" height="{ph}">'
-            f'<img src="{asset("images/brand/jeddah-fountain-landscape-1280.webp")}" '
-            f'srcset="{srcset("landscape", (800, 1280, 1920))}" sizes="(min-width: 1200px) 34vw, 100vw" '
-            f'width="{w}" height="{h}" alt="{e(t("hero_photo_alt"))}" fetchpriority="high" decoding="async">'
-            f'</picture></figure>')
+    """The home header photo (content.HERO_PHOTO; sources in assets/images/brand/CREDITS.md): a
+    tall crop for the panel beside the headline from 1200px, a wide crop for the band above it on
+    smaller screens, and a caption naming the place, with the photographer's credit when the
+    licence asks for one."""
+    ph = EN.HERO_PHOTO
+    tall, wide = ph['tall'], ph['wide']
+
+    def srcset(name, widths):
+        return ', '.join(f'{asset(f"images/brand/{name}-{w}.webp")} {w}w' for w in widths)
+    tw, th = image_size(f'brand/{tall}-{ph["tall_widths"][1]}.webp')
+    ww, wh = image_size(f'brand/{wide}-{ph["wide_widths"][1]}.webp')
+    fallback = asset(f'images/brand/{wide}-{ph["wide_widths"][1]}.webp')
+    credit = ''
+    if ph['author']:
+        # dir="ltr" keeps the Latin name and licence whole inside Arabic text; the licence asks
+        # that changes be noted, hence "cropped".
+        ext = ' target="_blank" rel="noopener" dir="ltr"'
+        sr = f'<span class="visually-hidden">{e(t("new_tab"))}</span>'
+        name = e(ph['author']) if C is EN else f'<span lang="en">{e(ph["author"])}</span>'
+        label = t('photo_credit')
+        sep = '' if label.endswith('：') else ' '
+        credit = (f'<span class="hero__credit">{e(label)}{sep}'
+                  f'<a href="{e(ph["source_url"])}"{ext}>{name}{sr}</a> · '
+                  f'<a href="{e(ph["license_url"])}"{ext}>{e(ph["license"])}{sr}</a> · {e(t("photo_cropped"))}</span>')
+    focus = f'--focus-tall: {ph["focus_tall"]}; --focus-wide: {ph["focus_wide"]}'
+    return (f'<figure class="hero__photo" style="{focus}"><picture>'
+            f'<source media="(min-width: 1200px)" srcset="{srcset(tall, ph["tall_widths"])}" '
+            f'sizes="38vw" width="{tw}" height="{th}">'
+            f'<img src="{fallback}" srcset="{srcset(wide, ph["wide_widths"])}" sizes="100vw" '
+            f'width="{ww}" height="{wh}" alt="{e(t("hero_photo_alt"))}" fetchpriority="high" decoding="async">'
+            f'</picture><figcaption class="hero__caption"><span class="hero__place">{e(t("hero_photo_place"))}</span>'
+            f'{credit}</figcaption></figure>')
 
 
 def build_home():
@@ -667,7 +689,7 @@ def build_home():
     hero = page_hero(
         t('hero_eyebrow'), t('hero_title'), t('hero_lead'),
         actions=button('contact.html', t('cta_discuss')) + link_arrow('services.html', t('explore_services')),
-        extra=hero_photo() + stats, cls='hero--home')
+        extra=stats, photo=hero_photo(), cls='hero--home')
 
     # The live home page's own sections, in its order: who we are, services, partner, sectors.
     who = section(
