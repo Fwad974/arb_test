@@ -374,6 +374,25 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @keyframes photo-rise { from { clip-path: inset(100% 0 0 0 round var(--radius)); } to { clip-path: inset(0 0 0 0 round var(--radius)); } }
 @keyframes photo-settle { from { transform: scale(1.14); } }
 
+/* ---------- services page: one block per service, with the live site's text ---------- */
+.service { display: grid; gap: 1.25rem 4rem; padding-block: clamp(2.5rem, 5vw, 4rem); border-top: 1px solid var(--line); }
+.service:first-child { padding-top: 0; border-top: 0; }
+.service:last-child { padding-bottom: 0; }
+.service__num { display: block; margin-bottom: 0.75rem; color: var(--accent-text); font-size: 0.8125rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.service__head h2 { max-width: 16ch; font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); }
+.service__head .link-arrow { margin-top: 1.25rem; }
+.service__body > .eyebrow { margin-bottom: 0.75rem; }
+.service__subtitle { margin-bottom: 0.75rem; font-size: 1.25rem; }
+.service__lists { margin-top: 2rem; }
+.service__lists h3, .cols h3 { margin-bottom: 0.5rem; font-size: 1.0625rem; }
+@media (min-width: 900px) {
+  .service { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  .service__head { position: sticky; top: calc(var(--header-h) + 2.5rem); align-self: start; }
+}
+.body-more { max-width: 40em; margin-top: 1rem; color: var(--text); }
+.cols--spaced { margin-top: 2.5rem; }
+.area .link-arrow { margin-top: 1rem; }
+
 /* ---------- hairline rows ---------- */
 .rows { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
 .row { border-bottom: 1px solid var(--line); }
@@ -421,6 +440,8 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 .list--numbered { grid-template-columns: minmax(0, 1fr); counter-reset: item; }
 .list--numbered li { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); counter-increment: item; }
 .list--numbered li::before { content: counter(item, decimal-leading-zero); color: var(--accent-text); font-weight: 600; font-size: 0.8125rem; padding-top: 3px; font-variant-numeric: tabular-nums; }
+/* One column where a list sits inside a column of its own (the services' support and outcome lists). */
+.list--stack { grid-template-columns: minmax(0, 1fr); }
 
 .areas { display: grid; gap: 3rem; }
 .area h3 { font-size: 1.3125rem; }

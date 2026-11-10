@@ -1,7 +1,7 @@
 """Shared by the translated content files (content_ar.py, content_zh.py, content_ja.py).
 
 Each of those files supplies text only, in private tables (_SERVICES, _LIFE_SCIENCES,
-_SECTORS, _ROLES) plus VALUES, STEPS, STATS, PARTNER, LEGAL_UPDATED, TERMS, PRIVACY,
+_SERVICE_AREAS, _SECTORS, _ROLES) plus VALUES, STEPS, STATS, PARTNER, LEGAL_UPDATED, TERMS, PRIVACY,
 SITE and UI. complete() fills in everything else from content.py (slugs, links,
 photos, numbers, logos) and fails loudly if a translation is missing or has a
 different number of items from the English, so the languages can't drift apart.
@@ -10,7 +10,9 @@ import copy
 
 import content as en
 
-TEXT_KEYS = ('label', 'option', 'short', 'tag', 'title', 'intro', 'overview', 'needs', 'challenges', 'deliverables', 'faq')
+TEXT_KEYS = ('label', 'option', 'short', 'tag', 'title', 'intro', 'overview', 'overview_more', 'needs',
+             'challenges_title', 'challenges', 'why', 'examples', 'deliverables', 'faq')
+AREA_KEYS = ('label', 'home', 'approach_title', 'approach', 'support', 'outcomes')
 
 
 def _item(item, tr, where):
@@ -32,11 +34,24 @@ def _item(item, tr, where):
     return out
 
 
+def _area(area, tr, where):
+    out = copy.deepcopy(area)
+    for key in AREA_KEYS:
+        if key in area:
+            if key not in tr:
+                raise KeyError(f'{where}: missing "{key}"')
+            if isinstance(area[key], list) and len(area[key]) != len(tr[key]):
+                raise ValueError(f'{where}: "{key}" has {len(tr[key])} items, English has {len(area[key])}')
+            out[key] = tr[key]
+    return out
+
+
 def complete(ns):
     """Fill a translated content module's namespace in place. Call at the end of the module."""
     code = ns['LANG']['code']
     ns['SERVICES'] = [_item(s, ns['_SERVICES'][s['slug']], f'{code} service {s["slug"]}') for s in en.SERVICES]
     ns['LIFE_SCIENCES'] = _item(en.LIFE_SCIENCES, ns['_LIFE_SCIENCES'], f'{code} life-sciences')
+    ns['SERVICE_AREAS'] = [_area(a, ns['_SERVICE_AREAS'][a['id']], f'{code} service area {a["id"]}') for a in en.SERVICE_AREAS]
     ns['SECTORS'] = [dict(s, **ns['_SECTORS'][s['slug']]) for s in en.SECTORS]
     for sector in ns['SECTORS']:
         if sector['link'] and 'link_label' not in ns['_SECTORS'][sector['slug']]:
@@ -57,3 +72,6 @@ def complete(ns):
     missing, extra = set(en.UI) - set(ns['UI']), set(ns['UI']) - set(en.UI)
     if missing or extra:
         raise KeyError(f'{code}: UI keys missing {sorted(missing)} / extra {sorted(extra)}')
+    for key, value in en.UI.items():
+        if isinstance(value, list) and len(ns['UI'][key]) != len(value):
+            raise ValueError(f'{code}: UI "{key}" has {len(ns["UI"][key])} items, English has {len(value)}')

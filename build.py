@@ -409,9 +409,9 @@ def rows(items, compact=False):
     return f'<ul class="{cls}">' + ''.join(out) + '</ul>'
 
 
-def plain_list(items, numbered=False):
+def plain_list(items, numbered=False, stacked=False):
     tag = 'ol' if numbered else 'ul'
-    cls = 'list list--numbered' if numbered else 'list'
+    cls = 'list list--numbered' if numbered else ('list list--stack' if stacked else 'list')
     return f'<{tag} class="{cls}">' + ''.join(f'<li>{e(x)}</li>' for x in items) + f'</{tag}>'
 
 
@@ -443,17 +443,16 @@ def cta(title, body, label, href='contact.html'):
 # --------------------------------------------------------------------------- service areas
 
 def service_areas():
-    """The eight public service areas, in the live site's order."""
-    areas = []
-    for s in C.SERVICES:
-        if s.get('areas'):
-            for a in s['areas']:
-                areas.append(dict(label=a['label'], short=a['short'], href=f'{s["slug"]}.html#{a["id"]}',
-                                  tag=s['label'], items=a['items']))
-        else:
-            areas.append(dict(label=s['label'], short=s['short'], href=f'{s["slug"]}.html',
-                              tag=s['tag'], items=s['needs']))
-    return areas
+    """The eight services of the Services page, in the live site's order. The first three share
+    the Advisory page (with their own anchors); the rest each have a page."""
+    pages = {s['slug']: s for s in C.SERVICES}
+    out = []
+    for a in C.SERVICE_AREAS:
+        page = pages[a['page']]
+        href = f'{a["page"]}.html#{a["id"]}' if a['page'] == 'advisory' else f'{a["page"]}.html'
+        out.append(dict(a, short=a['home'], href=href, items=a['support'],
+                        tag=page['label'] if a['page'] == 'advisory' else page['tag']))
+    return out
 
 
 # --------------------------------------------------------------------------- layout
@@ -668,84 +667,125 @@ def build_home():
         actions=button('contact.html', t('cta_discuss')) + link_arrow('services.html', t('explore_services')),
         extra=hero_photo() + stats, cls='hero--home')
 
+    # The live home page's own sections, in its order: who we are, services, partner, sectors.
+    who = section(
+        t('about_us_eyebrow'), t('who_heading'),
+        f'<p class="body-lg">{e(t("who_body"))}</p>{plain_list(t("who_list"))}'
+        f'<blockquote class="statement"><p>{e(t("who_statement"))}</p></blockquote>',
+        footer=link_arrow('about.html', t('read_more')))
+
     services = section(
-        t('services_eyebrow'), t('services_heading'),
+        t('capabilities_eyebrow'), t('services_heading'),
         rows([dict(num=num(i + 1), title=a['label'], desc=a['short'], href=a['href']) for i, a in enumerate(AREAS)]),
         intro=t('services_intro'),
         footer='<div class="actions actions--tight">' + button('contact.html', t('cta_discuss'))
                + link_arrow('services.html', t('all_services')) + '</div>')
+
+    partner = section(
+        t('home_partner_eyebrow'), t('home_partner_heading'),
+        f'<p class="body-lg">{e(t("partner_body"))}</p><p class="body-more">{e(t("partner_body_more"))}</p>',
+        footer=link_arrow('about.html#partnership', t('our_partnership')))
 
     steps = '<ol class="steps">' + ''.join(
         f'<li class="step"><span class="step__num">{num(i + 1)}</span><h3>{e(x)}</h3><p>{e(d)}</p></li>'
         for i, (x, d) in enumerate(C.STEPS)) + '</ol>'
     approach = section(t('how_eyebrow'), t('how_heading'), steps, intro=t('how_intro'), cls='section--tint')
 
-    who = section(
-        t('who_eyebrow'), t('who_heading'),
-        f'''<p class="body-lg">{e(t("who_body"))}</p>
-        <div class="panel">
-          <p class="eyebrow">{e(t("partner_eyebrow"))}</p>
-          <p class="panel__title">{e(t("partner_short_name"))}</p>
-          <p>{e(t("partner_short_body"))}</p>
-          {link_arrow('about.html#partnership', t('our_partnership'))}
-        </div>''',
-        footer=link_arrow('about.html', t('about_link')))
-
     network = trust_strip(C.CLIENTS_NETWORK)
 
     sectors = section(
-        t('sectors_eyebrow'), t('sectors_heading'),
+        t('customer_base_eyebrow'), t('sectors_heading'),
         rows([dict(num=num(i + 1), title=s['label'], desc=s['desc'], href=f'sectors.html#{s["slug"]}')
               for i, s in enumerate(C.SECTORS)], compact=True),
         intro=t('sectors_intro'), footer=link_arrow('sectors.html', t('all_sectors')))
 
-    body = hero + network + services + approach + who + sectors + cta(
+    body = hero + network + who + services + partner + approach + sectors + cta(
         t('home_cta_title'), t('home_cta_body'), t('cta_discuss'))
     page('index', t('home_title'), t('home_desc'), body)
 
 
+def service_block(i, a):
+    """One service on the Services page, with the live site's text for it."""
+    title = f'<h3 class="service__subtitle">{e(a["approach_title"])}</h3>' if a.get('approach_title') else ''
+    return f'''
+<article class="service" id="{a["id"]}">
+  <div class="service__head">
+    <span class="service__num">{num(i + 1)}</span>
+    <h2>{e(a["label"])}</h2>
+    {link_arrow(a["href"], t("read_more"))}
+  </div>
+  <div class="service__body">
+    <p class="eyebrow">{e(t("approach_label"))}</p>
+    {title}<p class="body-lg">{e(a["approach"])}</p>
+    <div class="cols service__lists">
+      <div><h3>{e(t("support_label"))}</h3>{plain_list(a["support"], stacked=True)}</div>
+      <div><h3>{e(t("achieve_label"))}</h3>{plain_list(a["outcomes"], stacked=True)}</div>
+    </div>
+  </div>
+</article>'''
+
+
 def build_services():
     hero = page_hero(t('services_eyebrow'), t('services_hero_title'), t('services_hero_lead'))
-    listing = section(
+    intro = section(
         t('areas_eyebrow'), t('areas_heading'),
-        rows([dict(num=num(i + 1), title=a['label'], desc=a['short'], href=a['href'], meta=a['tag'],
-                   extra='<span class="row__tags">' + ''.join(f'<span>{e(x)}</span>' for x in a['items'][:3]) + '</span>')
-              for i, a in enumerate(AREAS)]),
-        intro=t('areas_intro'))
+        f'<p class="body-lg">{e(t("areas_intro"))}</p><p class="body-more">{e(t("areas_intro_more"))}</p>')
+    listing = ('<section class="section services-list"><div class="wrap">'
+               + ''.join(service_block(i, a) for i, a in enumerate(AREAS)) + '</div></section>')
     journey = section(
         t('journey_eyebrow'), t('journey_heading'),
         f'<p class="body-lg">{e(t("journey_body"))}</p>'
-        '<p class="journey">' + ''.join(f'<span>{e(x)}</span>' for x in t('journey_steps')) + '</p>')
+        f'<blockquote class="statement"><p>{e(t("journey_statement"))}</p></blockquote>')
     page('services', t('services_title'), t('services_desc'),
-         hero + listing + journey + cta(t('services_cta_title'), t('services_cta_body'), t('cta_discuss')))
+         hero + intro + listing + journey + cta(t('services_cta_title'), t('services_cta_body'), t('cta_discuss')))
 
 
 def build_detail(item, is_sector=False):
     slug = item['slug']
+    # Industrial and Construction Technology have no detail page on the live site: their lead,
+    # overview and support areas are the Services page's text for them.
+    area = next((a for a in AREAS if a['id'] == item.get('area')), None)
+    intro = item.get('intro') or area['home']
     parent = (t('nav_sectors'), 'sectors.html') if is_sector else (t('nav_services'), 'services.html')
     hero = page_hero(
-        item['tag'], item['title'], item['intro'],
+        item['tag'], item['title'], intro,
         actions=button(f'contact.html?interest={slug}', t('discuss_project') if is_sector else t('discuss_service'))
         + link_arrow('#support', t('where_help_link')),
         crumbs=[(t('home'), 'index.html'), parent, (item['label'], '')])
 
-    overview = section(t('overview_eyebrow'), t('overview_heading'), f'<p class="body-lg">{e(item["overview"])}</p>')
+    subtitle = f'<h3 class="service__subtitle">{e(area["approach_title"])}</h3>' if area and area.get('approach_title') else ''
+    more = f'<blockquote class="statement"><p>{e(item["overview_more"])}</p></blockquote>' if item.get('overview_more') else ''
+    overview = section(t('overview_eyebrow'), t('overview_heading'),
+                       f'{subtitle}<p class="body-lg">{e(item.get("overview") or area["approach"])}</p>{more}')
 
-    if item.get('areas'):
-        support_body = '<div class="areas">' + ''.join(
+    support = section(t('support_eyebrow'), t('support_heading'), plain_list(item.get('needs') or area['support']),
+                      id='support')
+
+    # Advisory covers three of the eight services; each keeps its anchor (#strategy and so on).
+    disciplines = ''
+    if slug == 'advisory':
+        parts = [a for a in AREAS if a['page'] == 'advisory']
+        disciplines = section(t('areas_detail_eyebrow'), t('areas_detail_heading'), '<div class="areas">' + ''.join(
             f'<div class="area" id="{a["id"]}"><span class="area__num">{num(i + 1)}</span><h3>{e(a["label"])}</h3>'
-            f'<p>{e(a["short"])}</p>{plain_list(a["items"])}</div>'
-            for i, a in enumerate(item['areas'])) + '</div>'
-    else:
-        support_body = plain_list(item['needs'])
-    support = section(t('support_eyebrow'), t('support_heading'), support_body, id='support')
+            f'<p>{e(a["home"])}</p>{plain_list(a["support"])}'
+            f'{link_arrow("services.html#" + a["id"], t("read_more"))}</div>'
+            for i, a in enumerate(parts)) + '</div>')
 
+    if item.get('why'):
+        left, right = (item['challenges_title'], item['challenges']), (t('why_title'), item['why'])
+    else:
+        left, right = (t('challenges_title'), item['challenges']), (t('achieve_label'), area['outcomes'])
     outcomes = section(
         t('outcomes_eyebrow'), t('outcomes_heading'),
         f'''<div class="cols">
-          <div><h3>{e(t("challenges_title"))}</h3><p class="small">{e(t("challenges_sub"))}</p>{plain_list(item["challenges"], numbered=True)}</div>
-          <div><h3>{e(t("outputs_title"))}</h3><p class="small">{e(t("outputs_sub"))}</p>{plain_list(item["deliverables"], numbered=True)}</div>
+          <div><h3>{e(left[0])}</h3>{plain_list(left[1], stacked=True)}</div>
+          <div><h3>{e(right[0])}</h3>{plain_list(right[1], stacked=True)}</div>
         </div>''')
+
+    if item.get('examples'):
+        examples = section(t('examples_eyebrow'), t('examples_heading'), plain_list(item['examples'], numbered=True))
+    else:
+        examples = section(t('outputs_title'), t('examples_heading'), plain_list(item['deliverables'], numbered=True))
 
     questions = section(t('faq_eyebrow'), t('faq_heading'), faq(item['faq']))
 
@@ -753,10 +793,10 @@ def build_detail(item, is_sector=False):
     related = section(t('related_eyebrow'), t('related_heading'),
                       rows([dict(title=s['label'], desc=s['short'], href=f'{s["slug"]}.html') for s in related_items]))
 
-    body = hero + overview + support + outcomes + questions + related + cta(
+    body = hero + overview + support + disciplines + outcomes + examples + questions + related + cta(
         t('detail_cta_title'), t('detail_cta_body'),
         t('discuss_project') if is_sector else t('enquire_service'), href=f'contact.html?interest={slug}')
-    page(slug, item['label'], item['intro'], body)
+    page(slug, item['label'], intro, body)
 
 
 def build_sectors():
@@ -765,19 +805,28 @@ def build_sectors():
     for i, s in enumerate(C.SECTORS):
         extra = (f'<span class="row__more">{link_arrow(s["link"], s["link_label"])}</span>' if s['link'] else '')
         items.append(dict(id=s['slug'], num=num(i + 1), title=s['label'], desc=s['desc'], meta=s['category'], extra=extra))
+    overview = section(t('overview_eyebrow'), t('overview_heading'), f'<p class="body-lg">{e(t("sectors_overview"))}</p>')
     listing = section(t('focus_eyebrow'), t('focus_heading'), rows(items), intro=t('focus_intro'))
-    why = section(t('why_eyebrow'), t('why_heading'), f'<p class="body-lg">{e(t("why_body"))}</p>',
-                  footer=link_arrow('life-sciences.html', t('ls_link')))
+    why = section(
+        t('why_eyebrow'), t('why_heading'),
+        f'<p class="body-lg">{e(t("why_body"))}</p>'
+        f'<div class="cols cols--spaced"><div><h3>{e(t("why_title"))}</h3>{plain_list(t("sector_why"), stacked=True)}</div>'
+        f'<div><h3>{e(t("examples_eyebrow"))}</h3>{plain_list(t("sector_examples"), numbered=True)}</div></div>',
+        footer=link_arrow('life-sciences.html', t('ls_link')))
     page('sectors', t('sectors_title'), t('sectors_desc'),
-         hero + listing + why + cta(t('sectors_cta_title'), t('sectors_cta_body'), t('sectors_cta_label')))
+         hero + overview + listing + why + cta(t('sectors_cta_title'), t('sectors_cta_body'), t('sectors_cta_label')))
 
 
 def build_about():
     hero = page_hero(t('nav_about'), t('about_hero_title'), t('about_hero_lead'))
     who = section(
         t('who_eyebrow'), t('about_who_heading'),
-        f'<p class="body-lg">{e(t("about_who_body"))}</p>'
-        f'<blockquote class="statement"><p>{e(t("about_statement"))}</p></blockquote>')
+        plain_list(t('about_who_list'), numbered=True)
+        + f'<blockquote class="statement"><p>{e(t("about_statement"))}</p></blockquote>')
+    story_paras = t('story_body')
+    story = section(
+        t('story_eyebrow'), t('story_heading'),
+        f'<p class="body-lg">{e(story_paras[0])}</p>' + ''.join(f'<p class="body-more">{e(x)}</p>' for x in story_paras[1:]))
     values = section(
         t('values_eyebrow'), t('values_heading'),
         '<ul class="grid-values">' + ''.join(
@@ -785,7 +834,7 @@ def build_about():
             for i, (x, d) in enumerate(C.VALUES)) + '</ul>')
     partner = section(
         t('partnership_eyebrow'), t('partnership_heading'),
-        f'<p class="body-lg">{e(t("partnership_body"))}</p>'
+        f'<p class="body-lg">{e(t("partnership_body"))}</p><p class="body-more">{e(t("partnership_body_more"))}</p>'
         f'<figure class="photo">{img(C.PARTNER["photo"], C.PARTNER["photo_alt"])}'
         f'<figcaption>{e(C.PARTNER["photo_alt"])}{e(t("period"))}</figcaption></figure>'
         f'<div class="panel"><p class="eyebrow">{e(t("partner_eyebrow"))}</p>'
@@ -817,7 +866,7 @@ def build_about():
         f'<h3 class="group-title">{e(t("team_international"))} <span>{len(C.TEAM_INTERNATIONAL)}</span></h3>{people(C.TEAM_INTERNATIONAL)}',
         intro=t('team_intro'), id='team')
     page('about', t('about_title'), t('about_desc'),
-         hero + who + values + partner + team + cta(t('about_cta_title'), t('about_cta_body'), t('about_cta_label')))
+         hero + who + story + values + partner + team + cta(t('about_cta_title'), t('about_cta_body'), t('about_cta_label')))
 
 
 def build_contact():
