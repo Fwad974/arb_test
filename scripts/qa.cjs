@@ -442,7 +442,8 @@ function serve() {
   // 6f. Landing animation: on arrival (no referrer) a curtain covers the page while the wordmark
   //     forms and the header logo waits; the wordmark then glides into the header as the curtain
   //     lifts, and within 3.5 s everything is gone and the header logo shows. A key press skips
-  //     it, and it does not play when moving between pages or with reduced motion.
+  //     it; it does not play when moving between pages or with reduced motion; a reload always
+  //     replays it.
   for (const [name, vp] of [['index.html', { width: 1280, height: 800 }], ['ar/index.html', { width: 1280, height: 800 }],
     ['ja/services.html', { width: 375, height: 740 }]]) {
     const sp = await browser.newPage({ viewport: vp });
@@ -475,6 +476,13 @@ function serve() {
     if (!(await kp.waitForSelector('.splash', { state: 'detached', timeout: 1000 }).then(() => true, () => false))) fail('landing animation: a key press does not skip it');
     await kp.goto(base + 'services.html', { referer: base + 'about.html' });
     if (await kp.evaluate(() => document.documentElement.classList.contains('splash-active'))) fail('landing animation plays on pages inside the site');
+    // A reload always replays it, even on a page reached from inside the site (for presenting).
+    await kp.reload();
+    if (!(await kp.evaluate(() => document.documentElement.classList.contains('splash-active')))) fail('landing animation does not replay on reload');
+    // Stylesheet and script URLs carry a content hash, so a new deploy never runs on stale CSS or JS.
+    const versioned = await kp.evaluate(() => [document.querySelector('link[rel="stylesheet"]').href, document.querySelector('script[src*="app.js"]').src]
+      .every((u) => /[?]v=[0-9a-f]{10}$/.test(u)));
+    if (!versioned) fail('stylesheet or script URL has no ?v= content hash');
     await kp.close();
     const rp = await browser.newPage({ reducedMotion: 'reduce' });
     await rp.goto(base + 'index.html');

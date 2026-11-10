@@ -13,6 +13,7 @@ Environment (optional, set in .github/workflows/pages.yml for deploys):
     INDEXABLE   "true" to allow search engines. Default is noindex so a
                 preview deploy never competes with the live site in search.
 """
+import hashlib
 import json
 import os
 import re
@@ -96,7 +97,23 @@ def hl(text):
 
 
 def asset(path):
-    return f'{PREFIX}assets/{path}'
+    """URL of a file under assets/. Stylesheets and scripts carry a short hash of their content
+    (?v=...): GitHub Pages lets browsers keep files for 10 minutes, and without it a visitor
+    could get a new page with the previous deploy's CSS or JS. Fonts and images keep plain URLs
+    (fonts must match the URLs in styles.css, or preloading them would fetch them twice)."""
+    url = f'{PREFIX}assets/{path}'
+    if path.endswith(('.css', '.js')):
+        url += '?v=' + _content_hash(path)
+    return url
+
+
+_HASHES = {}
+
+
+def _content_hash(path):
+    if path not in _HASHES:
+        _HASHES[path] = hashlib.sha1((ROOT / 'assets' / path).read_bytes()).hexdigest()[:10]
+    return _HASHES[path]
 
 
 ICONS = {
@@ -280,14 +297,18 @@ LOGO_SPLASH = LOGO_INLINE.replace('<svg class="logo"', '<svg class="logo splash_
 
 # Runs before first paint. Marks JS as available and turns on the motion layer (styles.css,
 # "motion") only when the browser can watch scrolling and the visitor has not asked for reduced
-# motion. A landing (a visitor arriving from another site or typing the address) plays the
-# landing animation (splash-active); otherwise the home page plays the header logo's own intro
-# (logo-intro), and other pages inside the site play neither. Reading the referrer stores
-# nothing on the visitor's device.
+# motion. A landing plays the landing animation (splash-active): a visitor arriving from another
+# site or typing the address, or any reload (a reload keeps the previous page's referrer, so it
+# is checked separately). Otherwise the home page plays the header logo's own intro
+# (logo-intro), and other pages inside the site play neither. Reading the referrer and the
+# navigation type stores nothing on the visitor's device.
 HEAD_SCRIPT = ("(function(d){d.classList.add('js');"
                "var m='IntersectionObserver'in window&&matchMedia('(prefers-reduced-motion: no-preference)').matches;"
                "if(m)d.classList.add('motion');"
-               "try{var r=document.referrer,l=!r||new URL(r).host!==location.host;"
+               "try{var r=document.referrer,p=performance,"
+               "n=p.getEntriesByType?p.getEntriesByType('navigation')[0]:null,"
+               "re=n?n.type==='reload':!!(p.navigation&&p.navigation.type===1),"
+               "l=re||!r||new URL(r).host!==location.host;"
                "if(m&&l)d.classList.add('splash-active','intro-wait');"
                "else if(l||d.hasAttribute('data-home'))d.classList.add('logo-intro')}catch(x){}})"
                "(document.documentElement)")

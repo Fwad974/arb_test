@@ -103,6 +103,11 @@ appears on the Contact page's first screen. Their details live in `site.env`, on
 
 Pull requests run the build and link checks only, without deploying.
 
+A deploy is live about a minute after the merge (see the **Actions** tab). GitHub Pages lets
+browsers keep pages for up to 10 minutes, so reload to see a change straight away. Stylesheet
+and script addresses carry a hash of their content (`styles.css?v=…`), so a browser never runs
+a new page with the previous deploy's CSS or JavaScript.
+
 The site is **noindex by default**, so a preview deploy never competes with the live site in search.
 
 ### Going live on elevatearabia.com
@@ -147,7 +152,8 @@ setting on Android browsers) leaves the page exactly as designed.
 It covers all four languages, and also checks that the headline and main button are on the first screen of a 1280×720 laptop,
 that 1920px and 2560px screens get larger text, content across most of the width and the intro beside the headline,
 that the logo follows the theme, plays its intro on arrival and on the home page but not on other pages, lifts on hover, and stays still with reduced motion,
-that the landing animation covers the page on arrival, glides the wordmark into the header, ends within 3.5 seconds, skips on a key press, and never plays between pages or with reduced motion,
+that the landing animation covers the page on arrival, glides the wordmark into the header, ends within 3.5 seconds, skips on a key press, replays on reload, and never plays between pages or with reduced motion,
+that stylesheet and script URLs carry a content hash,
 that scrolling reveals every block while nothing on the first screen starts hidden, and that reduced motion or no JavaScript gives a still page,
 that the moving logo strip sits under the home page header, pauses with its button and is a still grid with reduced motion,
 and tests the mobile menu, anchor offsets under the sticky header, contact form validation, the
@@ -197,11 +203,20 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
     "elevating" into view, while the wordmark glides up into its place in the header and takes
     the header's colour. The page header rises in behind it.
     - It lasts about 2.4 seconds, and any click, tap, key or scroll skips it.
-    - To replay it while presenting, reload the page.
+    - It plays on arrival from another site, from a typed address or bookmark, and on every
+      reload. To replay it while presenting, reload the page.
     - It never plays with reduced motion switched on in the visitor's system settings, or
       without JavaScript. The CSS ends it on its own, so the page is never left covered even if
       `app.js` fails to load.
     - The code is the "landing animation" parts of `styles.css` and `app.js`.
+
+    If it never plays on your own computer, reduced motion is probably on. Check:
+    - **Windows:** Settings → Accessibility → Visual effects → Animation effects.
+    - **macOS:** System Settings → Accessibility → Display → Reduce motion.
+    - **iPhone and iPad:** Settings → Accessibility → Motion → Reduce Motion.
+    - **Android:** Settings → Accessibility → Remove animations.
+
+    Remote desktop sessions often turn animations off as well.
   - **Home page intro:** back on the home page from inside the site, the header logo plays the
     same letter-by-letter intro on its own (about 1.6 seconds). Other pages inside the site play
     neither. Both read only the referrer, and store nothing on the visitor's device.
