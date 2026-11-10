@@ -345,11 +345,34 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 @media (min-width: 1200px) {
   .hero--home .wrap { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); column-gap: clamp(3rem, 5vw, 6rem); align-items: end; }
-  .hero--home .stats { grid-column: 2; grid-row: 1 / span 2; align-self: end; grid-template-columns: minmax(0, 1fr); margin: 0; }
-  .hero--home .stat { display: flex; align-items: baseline; gap: 1.25rem; padding-block: 1.25rem; }
-  .hero--home .stat dt { min-width: 1.6em; }
-  .hero--home .stat dd { margin: 0; }
+  .hero--home .stats { grid-column: 1 / -1; grid-row: 3; margin-top: clamp(2.5rem, 4vw, 3.5rem); }
 }
+
+/* ---------- home header photo: King Fahd's Fountain, Jeddah ----------
+   Beside the headline from 1200px (a tall crop, the figures in a row of three below both);
+   under the buttons on smaller screens (a wide crop, the figures below it). With
+   motion it rises into view, a wipe from the bottom, as the page header comes in; after a
+   landing that is just as the curtain lifts (--intro). */
+.hero__photo {
+  position: relative; margin: clamp(2rem, 5vw, 3rem) 0 0; aspect-ratio: 16 / 9;
+  border-radius: var(--radius); overflow: hidden; background: #08111b;
+}
+.hero__photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+@media (min-width: 700px) {
+  /* a wider frame on tablets, so the photo does not take over the first screen */
+  .hero__photo { aspect-ratio: 21 / 9; }
+  .hero__photo img { object-position: 50% 25%; }
+}
+@media (min-width: 1200px) {
+  .hero--home .hero__photo { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; margin: 0; aspect-ratio: auto; min-height: 24rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .motion .hero__photo { animation: photo-rise 1.3s var(--glide) calc(var(--intro, 0s) + 0.12s) both; }
+  .motion .hero__photo img { animation: photo-settle 2.4s var(--glide) calc(var(--intro, 0s) + 0.12s) both; }
+  .motion .hero--home :is(.stats) { animation-delay: calc(var(--intro, 0s) + 0.55s); }
+}
+@keyframes photo-rise { from { clip-path: inset(100% 0 0 0 round var(--radius)); } to { clip-path: inset(0 0 0 0 round var(--radius)); } }
+@keyframes photo-settle { from { transform: scale(1.14); } }
 
 /* ---------- hairline rows ---------- */
 .rows { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }

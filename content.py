@@ -481,6 +481,7 @@ UI = dict(
     messaging='Message us', whatsapp='WhatsApp', whatsapp_action='Chat on WhatsApp',
     whatsapp_text='Hello Elevate Arabia, I would like to discuss a project.',
     wechat='WeChat', wechat_hint='Search for this ID in WeChat to add us.', copy='Copy ID', copied='Copied',
+    hero_photo_alt="King Fahd's Fountain on the Jeddah waterfront at night",
     marquee_pause='Pause the moving logos', marquee_play='Play the moving logos',
     wechat_qr_alt='WeChat QR code for Elevate Arabia', line='LINE', line_action='Add us on LINE',
     # 404

@@ -317,6 +317,7 @@ UI = dict(
     messaging='メッセージ', whatsapp='WhatsApp', whatsapp_action='WhatsApp で相談する',
     whatsapp_text='こんにちは、Elevate Arabia さま。プロジェクトについて相談したいです。',
     wechat='WeChat', wechat_hint='WeChat でこの ID を検索して追加してください。', copy='ID をコピー', copied='コピーしました',
+    hero_photo_alt='夜のジッダの海辺にそびえるファハド国王の噴水',
     marquee_pause='ロゴの動きを一時停止', marquee_play='ロゴの動きを再開',
     wechat_qr_alt='Elevate Arabia の WeChat QR コード', line='LINE', line_action='LINE で友だち追加',
     nf_eyebrow='エラー 404', nf_title='ページが見つかりません。', nf_lead='お探しのページは存在しないか、移動した可能性があります。',

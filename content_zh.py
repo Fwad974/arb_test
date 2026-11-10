@@ -305,6 +305,7 @@ UI = dict(
     messaging='在线沟通', whatsapp='WhatsApp', whatsapp_action='通过 WhatsApp 联系',
     whatsapp_text='您好，Elevate Arabia，我想洽谈一个项目。',
     wechat='微信', wechat_hint='在微信中搜索此 ID 即可添加我们。', copy='复制 ID', copied='已复制',
+    hero_photo_alt='夜色中吉达海滨的法赫德国王喷泉',
     marquee_pause='暂停滚动标志', marquee_play='继续滚动标志',
     wechat_qr_alt='Elevate Arabia 微信二维码', line='LINE', line_action='在 LINE 上添加我们',
     nf_eyebrow='错误 404', nf_title='页面未找到。', nf_lead='您要查找的页面不存在或已被移动。',

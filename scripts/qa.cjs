@@ -170,7 +170,7 @@ function serve() {
       await settle(p);
       const m = await p.evaluate(() => {
         const box = (s) => { const el = document.querySelector(s); return el && el.getBoundingClientRect(); };
-        const h1 = box('.hero h1'), beside = box('.hero--home .stats') || box('.hero__side');
+        const h1 = box('.hero h1'), beside = box('.hero--home .hero__photo') || box('.hero__side');
         return { root: parseFloat(getComputedStyle(document.documentElement).fontSize), content: box('main .section .wrap').width,
           beside: !!beside && beside.top < h1.bottom };
       });

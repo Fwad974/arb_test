@@ -415,6 +415,7 @@ UI = dict(
     messaging='راسلنا', whatsapp='واتساب', whatsapp_action='تحدّث معنا عبر واتساب',
     whatsapp_text='مرحباً Elevate Arabia، أودّ مناقشة مشروع.',
     wechat='وي تشات', wechat_hint='ابحث عن هذا المعرّف في وي تشات لإضافتنا.', copy='نسخ المعرّف', copied='تم النسخ',
+    hero_photo_alt='نافورة الملك فهد على الواجهة البحرية في جدة ليلًا',
     marquee_pause='إيقاف حركة الشعارات', marquee_play='تشغيل حركة الشعارات',
     wechat_qr_alt='رمز QR لحساب Elevate Arabia على وي تشات', line='لاين', line_action='أضفنا على لاين',
     nf_eyebrow='خطأ 404', nf_title='الصفحة غير موجودة.', nf_lead='الصفحة التي تبحث عنها غير موجودة أو تم نقلها.',

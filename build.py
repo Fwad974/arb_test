@@ -644,13 +644,29 @@ def page(slug, title, description, body):
 
 # --------------------------------------------------------------------------- pages
 
+def hero_photo():
+    """King Fahd's Fountain on the Jeddah waterfront (CC0, see assets/images/brand/CREDITS.md):
+    a tall crop beside the headline on wide screens, a wide crop under it elsewhere."""
+    def srcset(shape, widths):
+        return ', '.join(f'{asset(f"images/brand/jeddah-fountain-{shape}-{w}.webp")} {w}w' for w in widths)
+    w, h = image_size('brand/jeddah-fountain-landscape-1280.webp')
+    pw, ph = image_size('brand/jeddah-fountain-portrait-800.webp')
+    return (f'<figure class="hero__photo"><picture>'
+            f'<source media="(min-width: 1200px)" srcset="{srcset("portrait", (480, 800, 1200))}" '
+            f'sizes="34vw" width="{pw}" height="{ph}">'
+            f'<img src="{asset("images/brand/jeddah-fountain-landscape-1280.webp")}" '
+            f'srcset="{srcset("landscape", (800, 1280, 1920))}" sizes="(min-width: 1200px) 34vw, 100vw" '
+            f'width="{w}" height="{h}" alt="{e(t("hero_photo_alt"))}" fetchpriority="high" decoding="async">'
+            f'</picture></figure>')
+
+
 def build_home():
     stats = '<dl class="stats">' + ''.join(
         f'<div class="stat"><dt>{e(v)}</dt><dd>{e(l)}</dd></div>' for v, l in C.STATS) + '</dl>'
     hero = page_hero(
         t('hero_eyebrow'), t('hero_title'), t('hero_lead'),
         actions=button('contact.html', t('cta_discuss')) + link_arrow('services.html', t('explore_services')),
-        extra=stats, cls='hero--home')
+        extra=hero_photo() + stats, cls='hero--home')
 
     services = section(
         t('services_eyebrow'), t('services_heading'),
