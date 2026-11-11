@@ -340,7 +340,14 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
     above, with its intro beside it from 1100px, and the content below in as many columns as it
     needs. Examples are the services and sectors as rows in two or three columns, the Advisory
     page's three disciplines side by side, the values and mission in three columns, the
-    support areas in three, the legal text in two, and the team in four.
+    support areas in three or four, the legal text in two, and the team in four.
+    - **Column counts:** the column count is chosen so no item sits alone on the last row.
+      Seven or eight support areas run 4 + 3 or 4 + 4, and the home page's seven sectors end
+      with an "All sectors" cell.
+    - **Alignment:** the Advisory disciplines line up their titles, lists and links across the
+      columns, and each column's hairlines break at the gutter.
+    - **Legal text:** it reads down one column, then the next.
+    - **Phones:** each service on the Services page ends with its "Read more" link.
 
   QA step 2d guards this: on every page, in all four languages at 1440 and 1920px wide, a
   side-by-side block fails if its content runs more than 300px past the heading beside it.

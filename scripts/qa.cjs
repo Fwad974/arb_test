@@ -233,15 +233,19 @@ function serve() {
       await p.evaluate(() => document.fonts.ready);
       const gaps = await p.evaluate(() => {
         const out = [];
-        const check = (el, head, body) => {
-          if (!head || !body) return;
-          const a = head.getBoundingClientRect(), b = body.getBoundingClientRect();
+        // head may be several elements: a service's start column is its head plus "Read more".
+        const check = (el, heads, body) => {
+          heads = heads.filter(Boolean);
+          if (!heads.length || !body) return;
+          const rs = heads.map((x) => x.getBoundingClientRect()), b = body.getBoundingClientRect();
+          const a = { left: Math.min(...rs.map((r) => r.left)), right: Math.max(...rs.map((r) => r.right)),
+            height: Math.max(...rs.map((r) => r.bottom)) - Math.min(...rs.map((r) => r.top)) };
           if (b.left < a.right - 1 && a.left < b.right - 1) return;  // stacked, not side by side
           if (b.height - a.height > 300) out.push(`${((el.querySelector('h2') || {}).textContent || '').trim().slice(0, 40)} (${Math.round(b.height - a.height)}px)`);
         };
-        document.querySelectorAll('.split').forEach((s) => check(s, s.querySelector(':scope > .split__head'), s.querySelector(':scope > .split__body')));
-        document.querySelectorAll('.service').forEach((s) => check(s, s.querySelector('.service__head'), s.querySelector('.service__body')));
-        document.querySelectorAll('.wide__head--side').forEach((s) => check(s, s.querySelector(':scope > .wide__title'), s.querySelector(':scope > :not(.wide__title)')));
+        document.querySelectorAll('.split').forEach((s) => check(s, [s.querySelector(':scope > .split__head')], s.querySelector(':scope > .split__body')));
+        document.querySelectorAll('.service').forEach((s) => check(s, [s.querySelector('.service__head'), s.querySelector('.service__more')], s.querySelector('.service__body')));
+        document.querySelectorAll('.wide__head--side').forEach((s) => check(s, [s.querySelector(':scope > .wide__title')], s.querySelector(':scope > :not(.wide__title)')));
         return out;
       });
       for (const g of gaps) fail(`${name} @${w}px: large empty space beside the heading: ${g}`);

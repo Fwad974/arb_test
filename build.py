@@ -351,7 +351,7 @@ def section(eyebrow, heading, body, intro='', id=None, footer='', cls='', aside=
 </section>'''
 
 
-def section_wide(eyebrow, heading, body, intro='', id=None, footer='', cls='', side=''):
+def section_wide(eyebrow, heading, body, intro='', id=None, footer='', cls='', side='', top=False):
     """Full-width section, for content too long to sit beside its heading: the heading above,
     with its intro (or side, any block) beside it on wide screens, and the content across the
     whole width below, in as many columns as it needs."""
@@ -361,7 +361,7 @@ def section_wide(eyebrow, heading, body, intro='', id=None, footer='', cls='', s
     return f'''
 <section class="section{' ' + cls if cls else ''}"{id_attr}>
   <div class="wrap">
-    <div class="wide__head{' wide__head--side' if side_html else ''}">
+    <div class="wide__head{' wide__head--side' if side_html else ''}{' wide__head--top' if top else ''}">
       <div class="wide__title">
         <p class="eyebrow">{e(eyebrow)}</p>
         <h2>{hl(heading)}</h2>
@@ -409,7 +409,7 @@ def rows(items, compact=False, cols=1):
     rows in that many columns on wide screens, for a full-width section."""
     out = []
     for it in items:
-        num_html = f'<span class="row__num">{e(it["num"])}</span>' if it.get('num') else ''
+        num_html = f'<span class="row__num">{e(it["num"])}</span>' if it.get('num') is not None else ''
         kicker = f'<span class="row__kicker">{e(it["meta"])}</span>' if it.get('meta') else ''
         extra = it.get('extra', '')
         desc = '' if compact else f'<span class="row__desc">{e(it["desc"])}</span>'
@@ -421,7 +421,7 @@ def rows(items, compact=False, cols=1):
         else:
             id_attr = f' id="{it["id"]}"' if it.get('id') else ''
             out.append(f'<li class="row"{id_attr}><div class="row__link row__link--static">{inner}</div></li>')
-    cls = ('rows' + (' rows--numbered' if any(i.get('num') for i in items) else '') + (' rows--compact' if compact else '')
+    cls = ('rows' + (' rows--numbered' if any(i.get('num') is not None for i in items) else '') + (' rows--compact' if compact else '')
            + (f' rows--{cols}col' if cols > 1 else ''))
     return f'<ul class="{cls}">' + ''.join(out) + '</ul>'
 
@@ -431,6 +431,8 @@ def plain_list(items, numbered=False, stacked=False, wide=False):
     tag = 'ol' if numbered else 'ul'
     cls = ('list list--numbered' + (' list--numbered-2col' if wide else '') if numbered
            else ('list list--stack' if stacked else ('list list--wide' if wide else 'list')))
+    if wide:
+        cls += f' list--n{len(items)}'
     return f'<{tag} class="{cls}">' + ''.join(f'<li>{e(x)}</li>' for x in items) + f'</{tag}>'
 
 
@@ -697,10 +699,13 @@ def hero_photo():
             f'{credit}</figcaption></figure>')
 
 
-def partner_card():
-    """Hirayama Holdings, the international partner: name, where it is, a link to its site."""
-    return (f'<div class="panel"><p class="eyebrow">{e(t("partner_eyebrow"))}</p>'
-            f'<p class="panel__title">{e(C.PARTNER["name"])}</p>'
+def partner_card(eyebrow=True):
+    """Hirayama Holdings, the international partner: name, where it is, a link to its site.
+    In Japanese the name may break only after 株式会社, not inside the katakana."""
+    name = e(C.PARTNER['name']).replace('株式会社', '株式会社<wbr>', 1)
+    label = f'<p class="eyebrow">{e(t("partner_eyebrow"))}</p>' if eyebrow else ''
+    return (f'<div class="panel">{label}'
+            f'<p class="panel__title">{name}</p>'
             f'<p>{e(t("partner_location"))}</p>'
             f'{link_arrow(C.PARTNER["url"], t("visit_partner"), external=True)}</div>')
 
@@ -718,7 +723,7 @@ def build_home():
         t('about_us_eyebrow'), t('who_heading'),
         f'<p class="body-lg">{e(t("who_body"))}</p>{plain_list(t("who_list"))}',
         footer=link_arrow('about.html', t('read_more')),
-        aside=f'<blockquote class="statement"><p>{e(t("who_statement"))}</p></blockquote>')
+        aside=f'<blockquote class="statement"><p>{e(t("who_statement"))}</p></blockquote>', cls='section--wide-body')
 
     services = section_wide(
         t('capabilities_eyebrow'), t('services_heading'),
@@ -732,7 +737,7 @@ def build_home():
         t('home_partner_eyebrow'), t('home_partner_heading'),
         f'<p class="body-lg">{e(t("partner_body"))}</p><p class="body-more">{e(t("partner_body_more"))}</p>',
         footer=link_arrow('about.html#partnership', t('our_partnership')),
-        aside=partner_card())
+        aside=partner_card(eyebrow=False))
 
     steps = '<ol class="steps">' + ''.join(
         f'<li class="step"><span class="step__num">{num(i + 1)}</span><h3>{e(x)}</h3><p>{e(d)}</p></li>'
@@ -744,8 +749,9 @@ def build_home():
     sectors = section_wide(
         t('customer_base_eyebrow'), t('sectors_heading'),
         rows([dict(num=num(i + 1), title=s['label'], desc=s['desc'], href=f'sectors.html#{s["slug"]}')
-              for i, s in enumerate(C.SECTORS)], compact=True, cols=3),
-        intro=t('sectors_intro'), footer=link_arrow('sectors.html', t('all_sectors')))
+              for i, s in enumerate(C.SECTORS)] + [dict(num='', title=t('all_sectors'), desc='', href='sectors.html')],
+             compact=True, cols=2),
+        intro=t('sectors_intro'))
 
     body = hero + network + who + services + partner + approach + sectors + cta(
         t('home_cta_title'), t('home_cta_body'), t('cta_discuss'))
@@ -764,13 +770,13 @@ def service_block(i, a):
     <h2>{e(a["label"])}</h2>
     <p class="service__summary">{e(a["home"])}</p>
     <div class="service__achieve"><h3>{e(t("achieve_label"))}</h3>{plain_list(a["outcomes"], stacked=True)}</div>
-    {link_arrow(a["href"], t("read_more"))}
   </div>
   <div class="service__body">
     <p class="eyebrow">{e(t("approach_label"))}</p>
     {title}<p class="body-lg">{e(a["approach"])}</p>
     <div class="service__lists"><h3>{e(t("support_label"))}</h3>{plain_list(a["support"])}</div>
   </div>
+  <div class="service__more">{link_arrow(a["href"], t("read_more"))}</div>
 </article>'''
 
 
@@ -778,7 +784,8 @@ def build_services():
     hero = page_hero(t('services_eyebrow'), t('services_hero_title'), t('services_hero_lead'))
     intro = section(
         t('areas_eyebrow'), t('areas_heading'),
-        f'<p class="body-lg">{e(t("areas_intro"))}</p><p class="body-more">{e(t("areas_intro_more"))}</p>')
+        f'<p class="body-lg">{e(t("areas_intro"))}</p><p class="body-more">{e(t("areas_intro_more"))}</p>',
+        cls='section--wide-body')
     listing = ('<section class="section services-list"><div class="wrap">'
                + ''.join(service_block(i, a) for i, a in enumerate(AREAS)) + '</div></section>')
     journey = section(
@@ -804,9 +811,16 @@ def build_detail(item, is_sector=False):
 
     subtitle = f'<h3 class="service__subtitle">{e(area["approach_title"])}</h3>' if area and area.get('approach_title') else ''
     more = f'<blockquote class="statement"><p>{e(item["overview_more"])}</p></blockquote>' if item.get('overview_more') else ''
-    overview = section(t('overview_eyebrow'), t('overview_heading'),
-                       f'<p class="body-lg">{e(item.get("overview") or area["approach"])}</p>',
-                       aside=subtitle + more)
+    # A page's own overview is short: it sits beside the heading, with the quote below, so
+    # neither column runs empty in any language. Industrial and Construction Technology reuse
+    # the Services page's long approach text: their subtitle or quote goes under the heading.
+    if item.get('overview'):
+        overview = section_wide(t('overview_eyebrow'), t('overview_heading'), more,
+                                side=f'<div class="overview__side">{subtitle}<p class="body-lg">{e(item["overview"])}</p></div>',
+                                top=True)
+    else:
+        overview = section(t('overview_eyebrow'), t('overview_heading'),
+                           f'<p class="body-lg">{e(area["approach"])}</p>', aside=subtitle + more)
 
     support = section_wide(t('support_eyebrow'), t('support_heading'), plain_list(item.get('needs') or area['support'], wide=True),
                            id='support')

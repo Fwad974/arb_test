@@ -159,6 +159,7 @@ SERVICES = [
         short='Automotive, industrial operations and manufacturing transformation.',
         tag='Industry & operations',
         title='Strengthen industrial readiness from strategy to the factory floor',
+        overview_more='Industrial strategy only counts when it works on the factory floor.',
         challenges=['Disconnect between planning and production', 'Gaps in technical capability',
                     'Launch or ramp-up uncertainty', 'Inadequate manufacturing readiness'],
         deliverables=['Industrial readiness assessment', 'Operational transformation priorities',
