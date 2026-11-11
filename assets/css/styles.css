@@ -408,9 +408,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .service__subtitle { margin-bottom: 0.75rem; font-size: 1.25rem; }
 .service__lists { margin-top: 2rem; }
 .service__lists h3, .cols h3 { margin-bottom: 0.5rem; font-size: 1.0625rem; }
+.service__summary { margin-top: 1rem; max-width: 30em; color: var(--muted); }
+.service__achieve { margin-top: 1.75rem; max-width: 30em; }
+.service__achieve h3 { margin-bottom: 0.5rem; font-size: 1.0625rem; }
+.service__head .link-arrow { margin-top: 1.5rem; }
 @media (min-width: 900px) {
-  .service { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
-  .service__head { position: sticky; top: calc(var(--header-h) + 2.5rem); align-self: start; }
+  .service { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; }
 }
 .body-more { max-width: 40em; margin-top: 1rem; color: var(--text); }
 .cols--spaced { margin-top: 2.5rem; }
@@ -465,6 +468,58 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 .list--numbered li::before { content: counter(item, decimal-leading-zero); color: var(--accent-text); font-weight: 600; font-size: 0.8125rem; padding-top: 3px; font-variant-numeric: tabular-nums; }
 /* One column where a list sits inside a column of its own (the services' support and outcome lists). */
 .list--stack { grid-template-columns: minmax(0, 1fr); }
+
+/* ---------- filling both columns: no empty start side ----------
+   (Column rules here use doubled classes, .list.list--wide and so on: the base rules come later
+   in the file with the same specificity and would otherwise win.)
+   A two-column section whose content runs long gets an aside under its heading (a quote, a
+   photo), and the heading then scrolls with the page. Content too long even for that goes full
+   width (section_wide in build.py): the heading above, with its intro beside it from 1100px,
+   and the content below in as many columns as it needs. */
+.split__aside { margin-top: clamp(1.75rem, 3vw, 2.5rem); }
+.split__aside .statement { margin-top: 0; }
+.split__aside .photo { margin: 0; }
+@media (min-width: 900px) and (min-height: 700px) {
+  .split__head.split__head--aside { position: static; }
+}
+@media (min-width: 1100px) {
+  .wide__head--side { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: 4rem; align-items: end; }
+  .wide__head--side > :not(.wide__title) { margin: 0; padding-bottom: 0.35em; }
+}
+.wide__head > :not(.wide__title) { margin-top: 1.25rem; max-width: 40em; }
+.split__aside .panel { margin-top: 0; }
+.split__aside .service__subtitle { margin-bottom: 0; }
+.split__aside .service__subtitle + .statement { margin-top: 1.5rem; }
+@media (min-width: 900px) {
+  .rows.rows--2col, .rows.rows--3col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: clamp(2rem, 4vw, 4rem); }
+}
+@media (min-width: 1000px) {
+  .rows.rows--3col { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: clamp(2rem, 3vw, 3rem); }
+  .list.list--wide { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 900px) {
+  .list.list--numbered-2col { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: clamp(2rem, 4vw, 4rem); }
+}
+.areas--3 .area { padding-top: 1.25rem; border-top: 1px solid var(--line); }
+@media (min-width: 1000px) {
+  .areas--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.5rem clamp(2rem, 3vw, 3rem); }
+}
+.trio { display: grid; gap: 1.25rem; margin-bottom: clamp(2.5rem, 4vw, 3.5rem); }
+.trio p { color: var(--text); }
+.trio p:first-child { color: var(--ink); font-size: 1.125rem; line-height: 1.55; }
+@media (min-width: 1000px) {
+  .trio { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(2rem, 3vw, 3rem); }
+  .grid-values.grid-values--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.5rem clamp(2rem, 3vw, 3rem); }
+}
+.legal-grid { display: grid; gap: 1.25rem clamp(2rem, 4vw, 4rem); }
+.legal-grid p, .legal-after { max-width: 40em; }
+.legal-after { margin-top: 2rem; }
+.legal-after p + p { margin-top: 1rem; }
+@media (min-width: 900px) {
+  .legal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .legal-clauses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: clamp(3rem, 5vw, 5rem); }
+  .legal-clauses li:nth-child(-n+2) { margin-top: 0; }
+}
 
 .areas { display: grid; gap: 3rem; }
 .area h3 { font-size: 1.3125rem; }
@@ -605,7 +660,8 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 /* ---------- legal ---------- */
 .legal-date { margin-bottom: 1.5rem; color: var(--muted); font-size: 0.9375rem; }
 .split__body > p { max-width: 40em; }
-.legal-clauses { margin: 1.5rem 0 0; padding-inline-start: 1.5em; max-width: 40em; }
+.legal-clauses { margin: 0; padding-inline-start: 1.5em; }
+.legal-clauses p { max-width: 40em; }
 .legal-clauses li { margin-top: 1.5rem; padding-inline-start: 0.25rem; }
 .legal-clauses li::marker { color: var(--accent-text); font-weight: 600; }
 .legal-clauses h3 { margin-bottom: 0.375rem; }

@@ -326,13 +326,24 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
   the content width all grow together, so a large monitor shows the same composition at a
   readable size instead of a small column in a sea of white. The scale starts from the
   visitor's own browser text size, so a larger default text setting makes the whole site larger.
-- **Layout:** 76rem max width (1216px on a laptop, about 1520px on a 2560px screen) and
-  two-column sections (heading on the start side, content on the end side), stacking to one
-  column below 900px. On wide screens the section heading stays in view while its content
-  scrolls past. From 1100px wide, page headers put the intro beside the headline, and from
-  1200px the home page's header fills the first screen, with the Jeddah photo running to the
-  screen edge beside it.
-  The team list fills four columns.
+- **Layout:** 76rem max width (1216px on a laptop, about 1520px on a 2560px screen). From 1100px
+  wide, page headers put the intro beside the headline, and from 1200px the home page's header
+  fills the first screen, with the Jeddah photo running to the screen edge beside it. Sections
+  come in two shapes, and both avoid empty space beside a heading:
+  - **Two columns** (`section()` in `build.py`): heading on the start side, content on the end
+    side, stacking to one column below 900px. A short section's heading stays in view while its
+    content scrolls past. When the content runs long, the start side gets an aside under the
+    heading instead, such as the section's quote, a photo or the partner card, so both columns
+    carry content. Each service on the Services page also uses both columns: its summary and
+    what it helps to achieve on the start side, the approach and support areas on the end side.
+  - **Full width** (`section_wide()`), for content too long to sit beside a heading: the heading
+    above, with its intro beside it from 1100px, and the content below in as many columns as it
+    needs. Examples are the services and sectors as rows in two or three columns, the Advisory
+    page's three disciplines side by side, the values and mission in three columns, the
+    support areas in three, the legal text in two, and the team in four.
+
+  QA step 2d guards this: on every page, in all four languages at 1440 and 1920px wide, a
+  side-by-side block fails if its content runs more than 300px past the heading beside it.
 
 ## Contact form
 

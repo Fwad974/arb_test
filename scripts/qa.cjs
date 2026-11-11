@@ -215,6 +215,33 @@ function serve() {
     await p.close();
   }
 
+  // 2d. Layout: no large empty space beside a heading. In every side-by-side block (a two-column
+  //     section, a service on the Services page, a full-width heading with a block beside it) the
+  //     content may run at most 300px past the heading column; longer content belongs in an aside
+  //     under the heading or in a full-width section (see "Layout" in the README).
+  for (const [w, h] of [[1440, 900], [1920, 1080]]) {
+    const p = await browser.newPage({ viewport: { width: w, height: h }, reducedMotion: 'reduce' });
+    for (const name of pages) {
+      await p.goto(base + name);
+      await p.evaluate(() => document.fonts.ready);
+      const gaps = await p.evaluate(() => {
+        const out = [];
+        const check = (el, head, body) => {
+          if (!head || !body) return;
+          const a = head.getBoundingClientRect(), b = body.getBoundingClientRect();
+          if (b.left < a.right - 1 && a.left < b.right - 1) return;  // stacked, not side by side
+          if (b.height - a.height > 300) out.push(`${((el.querySelector('h2') || {}).textContent || '').trim().slice(0, 40)} (${Math.round(b.height - a.height)}px)`);
+        };
+        document.querySelectorAll('.split').forEach((s) => check(s, s.querySelector(':scope > .split__head'), s.querySelector(':scope > .split__body')));
+        document.querySelectorAll('.service').forEach((s) => check(s, s.querySelector('.service__head'), s.querySelector('.service__body')));
+        document.querySelectorAll('.wide__head--side').forEach((s) => check(s, s.querySelector(':scope > .wide__title'), s.querySelector(':scope > :not(.wide__title)')));
+        return out;
+      });
+      for (const g of gaps) fail(`${name} @${w}px: large empty space beside the heading: ${g}`);
+    }
+    await p.close();
+  }
+
   const page = await browser.newPage({ viewport: { width: 375, height: 800 } });
   // 3. Mobile menu
   await page.goto(base + 'index.html');
