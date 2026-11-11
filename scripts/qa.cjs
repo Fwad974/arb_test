@@ -132,23 +132,30 @@ function serve() {
   //     with color-scheme declared, it should render exactly like our own dark theme.
   const forced = await chromium.launch({ args: ['--blink-settings=forceDarkModeEnabled=true'] });
   for (const name of ['index.html', 'ar/index.html', 'zh/index.html', 'ja/index.html', 'about.html', 'contact.html']) {
-    const shots = [];
+    const tabs = [];
     for (const b of [browser, forced]) {
       const p = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark', reducedMotion: 'reduce' });
       await p.goto(base + name);
       // Finish the logo intro first, so both screenshots show the same frame. Wait, too, for the
-      // images on screen to decode: the home photo decodes asynchronously, and a screenshot taken
-      // before then shows an empty box in one browser and the photo in the other.
+      // images on screen to decode and paint (two frames): the home photo decodes
+      // asynchronously, and a screenshot taken before then shows an empty box in one browser and
+      // the photo in the other.
       await p.evaluate(async () => {
         await document.fonts.ready;
         await Promise.all([...document.images].filter((i) => { const r = i.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; })
           .map((i) => i.decode().catch(() => {})));
         document.getAnimations().filter((a) => a.effect && a.effect.getComputedTiming().endTime !== Infinity).forEach((a) => a.finish());
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       });
-      shots.push(await p.screenshot({ animations: 'disabled' }));
-      await p.close();
+      tabs.push(p);
     }
+    const shoot = () => Promise.all(tabs.map((p) => p.screenshot({ animations: 'disabled' })));
+    let shots = await shoot();
+    // Under heavy load the photo can still paint a frame late in one browser. A real repaint by
+    // forced dark mode is the same every time, so a second pair, a moment later, settles which.
+    if (!shots[0].equals(shots[1])) { await tabs[0].waitForTimeout(600); shots = await shoot(); }
     if (!shots[0].equals(shots[1])) fail(`${name}: forced dark mode changes the page (browser is repainting it)`);
+    await Promise.all(tabs.map((p) => p.close()));
   }
   await forced.close();
 
