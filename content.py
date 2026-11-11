@@ -371,12 +371,12 @@ CLIENTS_NETWORK = [
 # license, license_url and source_url give the credit the licence asks for, shown on the photo;
 # leave author empty for a public-domain or CC0 photo.
 HERO_PHOTO = dict(
-    tall='jeddah-nasseef-house-tall', tall_widths=(600, 1000, 1500),
-    wide='jeddah-nasseef-house-wide', wide_widths=(800, 1280, 1920),
-    focus_tall='30% 50%', focus_wide='50% 35%',
-    author='Diego Delso', license='CC BY-SA 4.0',
+    tall='jeddah-waterfront-dusk-tall', tall_widths=(600, 1000, 1500),
+    wide='jeddah-waterfront-dusk-wide', wide_widths=(800, 1280, 1920),
+    focus_tall='28% 70%', focus_wide='50% 15%',
+    author='Saudi Press Agency (SPA)', license='CC BY-SA 4.0',
     license_url='https://creativecommons.org/licenses/by-sa/4.0/',
-    source_url='https://commons.wikimedia.org/wiki/File:Al-Balad,_Yeda,_Arabia_Saudita,_2025-05-24,_DD_12.jpg',
+    source_url='https://commons.wikimedia.org/wiki/File:%D9%88%D8%A7%D8%AC%D9%87%D8%A9_%D9%85%D8%AF%D9%8A%D9%86%D8%A9_%D8%AC%D8%AF%D8%A9_%D8%A7%D9%84%D8%A8%D8%AD%D8%B1%D9%8A%D8%A9_%D9%81%D9%8A_%D8%A7%D9%84%D9%85%D8%B3%D8%A7%D8%A1.jpg',
 )
 
 SHOW_PARTNER_CLIENTS = False
@@ -619,7 +619,7 @@ UI = dict(
     messaging='Message us', whatsapp='WhatsApp', whatsapp_action='Chat on WhatsApp',
     whatsapp_text='Hello Elevate Arabia, I would like to discuss a project.',
     wechat='WeChat', wechat_hint='Search for this ID in WeChat to add us.', copy='Copy ID', copied='Copied',
-    hero_photo_alt='Nasseef House, a coral-stone merchant house with a carved wooden roshan, in Historic Jeddah (Al-Balad)',
+    hero_photo_alt="Jeddah's Red Sea waterfront at dusk: the lit Corniche lined with palms, and the city's new towers beyond",
     marquee_pause='Pause the moving logos', marquee_play='Play the moving logos',
     wechat_qr_alt='WeChat QR code for Elevate Arabia', line='LINE', line_action='Add us on LINE',
     # 404
@@ -683,7 +683,7 @@ UI = dict(
         'Our mission acts as a compass, influencing key strategic decisions in the ethos of continuously improving, branding, product innovation, partnerships and much more.',
         'By being a mission with a company, rather than a company with a mission, we leverage our brand to solve problems for individuals, companies, and our region. In turn, we gain insights into services that push the boundaries of what’s possible, to grow our business and build a better world for our region.',
     ],
-    hero_photo_place='Nasseef House, Historic Jeddah',
+    hero_photo_place='Jeddah waterfront at dusk',
     photo_credit='Photo:',
     photo_cropped='cropped',
 )
