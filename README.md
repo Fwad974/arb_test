@@ -122,10 +122,17 @@ appears on the Contact page's first screen. Their details live in `site.env`, on
 | Setting | What to put | What visitors get |
 |---|---|---|
 | `WHATSAPP_NUMBER` | International number, e.g. `+966533337712` | A WhatsApp chat with a greeting already typed, in the page's language |
-| `WECHAT_ID` | The WeChat ID | The ID with a "Copy ID" button (WeChat has no web link that opens a chat) |
-| `WECHAT_QR` | Optional: file name of a QR code image in `assets/images/contact/` | The QR code under the ID |
-| `LINE_ID` | The LINE Official Account ID, e.g. `@elevatearabia`, or a full `https://line.me/...` link | An "Add us on LINE" link |
+| `WECHAT_ID` | `whatsapp` (the WhatsApp number, the current setting), another number (`+...`), or a WeChat ID | The number or ID with a copy button and how to find it in WeChat (WeChat has no web link that opens a chat) |
+| `WECHAT_QR` | Optional: file name of a QR code image in `assets/images/contact/` | The QR code under the number or ID |
+| `LINE_ID` | `whatsapp` (the WhatsApp number, the current setting), another number (`+...`), a LINE Official Account ID such as `@elevatearabia`, or a full `https://line.me/...` link | A number: shown with a copy button and how to find it under Add friends in LINE. An ID or link: an "Add us on LINE" link |
 
+- WeChat and LINE are set to `whatsapp`, so all three apps use the WhatsApp number. Changing
+  `WHATSAPP_NUMBER` changes all three. Neither WeChat nor LINE has a web link that opens a chat
+  from a number, so the Contact page shows the number with a copy button, and the footer links
+  to it. People find the account by searching for the number in the app, so the number must be
+  registered in WeChat and LINE and allow being found by phone number. In WeChat this is under
+  Me → Settings → Friends → Methods for Adding Me → Mobile Number. In LINE it is under Settings →
+  Friends → Allow others to add by phone number.
 - Leave a value empty to hide that app.
 - Add `# placeholder` after a value and every build reminds you to replace it.
 - A GitHub repository variable with the same name (Settings → Secrets and variables → Actions →

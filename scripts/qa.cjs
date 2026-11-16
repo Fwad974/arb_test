@@ -353,14 +353,16 @@ function serve() {
     if (!href || !decodeURIComponent(href).includes(`subject=${subject}`)) fail(`${dir} mailto wrong: ${href && decodeURIComponent(href).slice(0, 80)}`);
   }
 
-  // 6b. Messaging apps from site.env: contact page links, footer row, WeChat copy button
+  // 6b. Messaging apps from site.env: contact page links, footer row, copy buttons. WeChat and
+  //     LINE can be given a number (the WhatsApp one by default): the Contact page then shows
+  //     it with a copy button, since neither app has a web link that opens a chat from a number.
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, permissions: ['clipboard-read', 'clipboard-write'] });
   const cp = await ctx.newPage();
   for (const name of ['contact.html', 'ar/contact.html', 'zh/contact.html', 'ja/contact.html']) {
     await cp.goto(base + name);
     const wa = await cp.getAttribute('.contact-list a[href^="https://wa.me/"]', 'href').catch(() => null);
     if (!wa || !/^https:\/\/wa\.me\/\d{8,15}\?text=/.test(wa)) fail(`${name}: WhatsApp link missing or malformed (${wa})`);
-    if (!(await cp.locator('.contact-list a[href^="https://line.me/R/ti/p/"]').count())) fail(`${name}: LINE link missing`);
+    if (!(await cp.locator('.contact-list a[href^="https://line.me/"], #line .copy-button').count())) fail(`${name}: LINE missing`);
     if ((await cp.locator('.footer-apps li').count()) !== 3) fail(`${name}: footer should list 3 messaging apps`);
     if (!(await cp.locator('.hero a[href^="https://wa.me/"]').count())) fail(`${name}: WhatsApp link missing from the first screen`);
   }
@@ -371,10 +373,16 @@ function serve() {
     if ((await link.count()) !== 1 || (await link.getAttribute('target')) !== '_blank') fail(`${name}: Flopexa logo link missing`);
   }
   await cp.goto(base + 'contact.html');
-  const wechatId = (await cp.textContent('#wechat code')).trim();
-  await cp.click('#wechat .copy-button');
-  if ((await cp.evaluate(() => navigator.clipboard.readText())) !== wechatId) fail('WeChat copy button did not copy the ID');
-  if ((await cp.textContent('#wechat .copy-button')).trim() !== 'Copied') fail('WeChat copy button gave no feedback');
+  for (const app of ['wechat', 'line']) {
+    if (!(await cp.locator(`#${app} .copy-button`).count())) continue;
+    const shown = (await cp.textContent(`#${app} code`)).trim();
+    await cp.click(`#${app} .copy-button`);
+    const copied = await cp.evaluate(() => navigator.clipboard.readText());
+    // a number is shown spaced (+966 53 333 7712) and copied whole (+966533337712)
+    const same = shown.startsWith('+') ? copied === '+' + shown.replace(/\D/g, '') : copied === shown;
+    if (!same) fail(`${app} copy button copied "${copied}" for "${shown}"`);
+    if ((await cp.textContent(`#${app} .copy-button`)).trim() !== 'Copied') fail(`${app} copy button gave no feedback`);
+  }
   await ctx.close();
 
   // 6c. Logo: inline SVG whose letters follow the theme. On arrival the landing animation forms

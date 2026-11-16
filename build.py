@@ -142,34 +142,66 @@ def brand_icon(name):
             f'<path d="{BRAND_ICONS[name]}"/></svg>')
 
 
+def phone_number(raw, setting):
+    """A full international number from site.env: (digits, the number as the site shows it)."""
+    digits = re.sub(r'\D', '', raw)
+    if not 8 <= len(digits) <= 15:
+        raise ValueError(f'site.env: {setting} must be a full international number, e.g. +966533337712')
+    return digits, next((label for label, number in C.SITE['phones'] if re.sub(r'\D', '', number) == digits), '+' + digits)
+
+
+def app_number(value, setting):
+    """WECHAT_ID or LINE_ID given as a phone number: 'whatsapp' (the WhatsApp number) or +<number>.
+    Neither app has a web link that opens a chat from a number, so the site shows the number to
+    search for in the app, with a copy button. Returns None when the value is an ID instead."""
+    if value.lower() == 'whatsapp':
+        if not SITE_ENV['WHATSAPP_NUMBER']:
+            raise ValueError(f'site.env: {setting}=whatsapp needs WHATSAPP_NUMBER')
+        return phone_number(SITE_ENV['WHATSAPP_NUMBER'], 'WHATSAPP_NUMBER')
+    if value.startswith('+'):
+        return phone_number(value, setting)
+    return None
+
+
 def channels():
-    """Messaging apps configured in site.env, validated, in display order."""
+    """Messaging apps configured in site.env, validated, in display order. copy is what the copy
+    button copies (a WeChat ID, or a number to search for); phone marks a number."""
     out = []
-    digits = re.sub(r'\D', '', SITE_ENV['WHATSAPP_NUMBER'])
-    if digits:
-        if not 8 <= len(digits) <= 15:
-            raise ValueError('site.env: WHATSAPP_NUMBER must be a full international number, e.g. +966533337712')
-        shown = next((label for label, number in C.SITE['phones'] if re.sub(r'\D', '', number) == digits), '+' + digits)
+    if SITE_ENV['WHATSAPP_NUMBER']:
+        digits, shown = phone_number(SITE_ENV['WHATSAPP_NUMBER'], 'WHATSAPP_NUMBER')
         out.append(dict(key='whatsapp', name=t('whatsapp'), action=t('whatsapp_action'), value=shown,
                         href=f'https://wa.me/{digits}?text={quote(t("whatsapp_text"))}'))
     wechat = SITE_ENV['WECHAT_ID']
     if wechat:
-        if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{5,19}', wechat):
-            raise ValueError('site.env: WECHAT_ID must be 6-20 letters, digits, _ or -, starting with a letter')
         qr = SITE_ENV['WECHAT_QR']
         if qr and not (ROOT / 'assets' / 'images' / 'contact' / qr).exists():
             raise ValueError(f'site.env: WECHAT_QR file assets/images/contact/{qr} not found')
-        out.append(dict(key='wechat', name=t('wechat'), value=wechat, qr=qr, href='contact.html#wechat'))
+        number = app_number(wechat, 'WECHAT_ID')
+        if number:
+            out.append(dict(key='wechat', name=t('wechat'), value=number[1], copy='+' + number[0], phone=True,
+                            qr=qr, href='contact.html#wechat'))
+        else:
+            if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{5,19}', wechat):
+                raise ValueError('site.env: WECHAT_ID must be 6-20 letters, digits, _ or -, starting with a letter, '
+                                 'a full international number, or whatsapp')
+            out.append(dict(key='wechat', name=t('wechat'), value=wechat, copy=wechat, phone=False, qr=qr,
+                            href='contact.html#wechat'))
     line = SITE_ENV['LINE_ID']
     if line:
-        if line.startswith('https://line.me/'):
-            href, shown = line, line
+        number = app_number(line, 'LINE_ID')
+        if number:
+            out.append(dict(key='line', name=t('line'), value=number[1], copy='+' + number[0], phone=True,
+                            href='contact.html#line'))
         else:
-            handle = line.lstrip('@')
-            if not re.fullmatch(r'[A-Za-z0-9._-]{3,20}', handle):
-                raise ValueError('site.env: LINE_ID must be an Official Account ID such as @elevatearabia')
-            href, shown = f'https://line.me/R/ti/p/%40{handle}', '@' + handle
-        out.append(dict(key='line', name=t('line'), action=t('line_action'), value=shown, href=href))
+            if line.startswith('https://line.me/'):
+                href, shown = line, line
+            else:
+                handle = line.lstrip('@')
+                if not re.fullmatch(r'[A-Za-z0-9._-]{3,20}', handle):
+                    raise ValueError('site.env: LINE_ID must be an Official Account ID such as @elevatearabia, '
+                                     'a full international number, or whatsapp')
+                href, shown = f'https://line.me/R/ti/p/%40{handle}', '@' + handle
+            out.append(dict(key='line', name=t('line'), action=t('line_action'), value=shown, href=href))
     return out
 
 
@@ -552,7 +584,7 @@ def layout(slug, title, description, body):
     if channels():
         items = []
         for ch in channels():
-            external = ch['key'] != 'wechat'
+            external = ch['href'].startswith('https://')
             attrs = ' target="_blank" rel="noopener"' if external else ''
             sr = f'<span class="visually-hidden">{e(t("new_tab"))}</span>' if external else ''
             items.append(f'<li><a href="{e(ch["href"])}"{attrs}>{brand_icon(ch["key"])}{e(ch["name"])}{sr}</a></li>')
@@ -945,12 +977,15 @@ def build_contact():
 
     def channel_row(ch):
         dt = f'<dt>{brand_icon(ch["key"])}{e(ch["name"])}</dt>'
-        if ch['key'] == 'wechat':
+        if 'copy' in ch:
             qr = (f'<img class="wechat-qr" src="{asset("images/contact/" + ch["qr"])}" alt="{e(t("wechat_qr_alt"))}" '
-                  f'width="160" height="160" loading="lazy">' if ch['qr'] else '')
-            return (f'<div id="wechat">{dt}<dd><span class="channel-id"><code dir="ltr">{e(ch["value"])}</code>'
-                    f'<button class="copy-button" type="button" data-copy="{e(ch["value"])}" data-copied="{e(t("copied"))}" hidden>'
-                    f'{e(t("copy"))}</button></span><span class="dd-note">{e(t("wechat_hint"))}</span>{qr}</dd></div>')
+                  f'width="160" height="160" loading="lazy">' if ch.get('qr') else '')
+            hint = t(f'{ch["key"]}_hint_phone') if ch['phone'] else t('wechat_hint')
+            code_cls = ' class="channel-number"' if ch['phone'] else ''
+            return (f'<div id="{ch["key"]}">{dt}<dd><span class="channel-id"><code{code_cls} dir="ltr">{e(ch["value"])}</code>'
+                    f'<button class="copy-button" type="button" data-copy="{e(ch["copy"])}" data-copied="{e(t("copied"))}" hidden>'
+                    f'{e(t("copy_number") if ch["phone"] else t("copy"))}</button></span>'
+                    f'<span class="dd-note">{e(hint)}</span>{qr}</dd></div>')
         return (f'<div>{dt}<dd>{link_arrow(ch["href"], ch["action"], external=True)}'
                 f'<span class="dd-note" dir="ltr">{e(ch["value"])}</span></dd></div>')
 

@@ -687,4 +687,7 @@ UI = dict(
     hero_photo_place='Jeddah waterfront at dusk',
     photo_credit='Photo:',
     photo_cropped='cropped',
+    copy_number='Copy number',
+    wechat_hint_phone='Search for this number in WeChat to add us.',
+    line_hint_phone='In LINE, search for this number under Add friends to add us.',
 )

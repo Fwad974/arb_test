@@ -577,6 +577,9 @@ UI = dict(
     hero_photo_place='暮色中的吉达海滨',
     photo_credit='摄影：',
     photo_cropped='已裁剪',
+    copy_number='复制号码',
+    wechat_hint_phone='在微信中搜索此号码即可添加我们。',
+    line_hint_phone='在 LINE 的“添加好友”中搜索此号码即可添加我们。',
 )
 
 complete(globals())
