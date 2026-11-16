@@ -159,6 +159,7 @@ SERVICES = [
         short='Automotive, industrial operations and manufacturing transformation.',
         tag='Industry & operations',
         title='Strengthen industrial readiness from strategy to the factory floor',
+        overview_more='Industrial strategy only counts when it works on the factory floor.',
         challenges=['Disconnect between planning and production', 'Gaps in technical capability',
                     'Launch or ramp-up uncertainty', 'Inadequate manufacturing readiness'],
         deliverables=['Industrial readiness assessment', 'Operational transformation priorities',
@@ -686,4 +687,7 @@ UI = dict(
     hero_photo_place='Jeddah waterfront at dusk',
     photo_credit='Photo:',
     photo_cropped='cropped',
+    copy_number='Copy number',
+    wechat_hint_phone='Search for this number in WeChat to add us.',
+    line_hint_phone='In LINE, search for this number under Add friends to add us.',
 )

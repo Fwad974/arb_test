@@ -140,7 +140,7 @@
      request). Blocks already on screen are left alone, so nothing visible ever disappears. */
   if (document.documentElement.classList.contains('motion')) {
     // Lists reveal item by item; every other block reveals as a whole.
-    const LISTS = '.rows, .logos, .people, .grid-values, .steps, .list, .contact-list';
+    const LISTS = '.rows, .logos, .people, .grid-values, .steps, .list, .contact-list, .areas, .trio, .legal-grid, .legal-clauses, .cols';
     const targets = $$('main .split__head, main .wide__head, main .cta__inner');
     $$('main .split__body > *, main .section > .wrap:not(.split) > :not(.wide__head)').forEach((el) => {
       if (el.matches(LISTS)) targets.push(...el.children); else targets.push(el);

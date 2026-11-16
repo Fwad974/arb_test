@@ -127,6 +127,7 @@ _SERVICES = {
         short='汽车、工业运营与制造业转型。',
         tag='工业与运营',
         title='从战略到车间，全面提升工业准备度',
+        overview_more='工业战略，只有在车间里行得通，才真正有价值。',
         challenges=['规划与生产脱节', '技术能力存在缺口', '启动或产能爬坡存在不确定性', '制造准备不足'],
         deliverables=['工业准备度评估', '运营转型重点', '投产行动计划', '能力与专家支持图谱'],
         faq=[
@@ -576,6 +577,9 @@ UI = dict(
     hero_photo_place='暮色中的吉达海滨',
     photo_credit='摄影：',
     photo_cropped='已裁剪',
+    copy_number='复制号码',
+    wechat_hint_phone='在微信中搜索此号码即可添加我们。',
+    line_hint_phone='在 LINE 的“添加好友”中搜索此号码即可添加我们。',
 )
 
 complete(globals())

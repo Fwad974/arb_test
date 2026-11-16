@@ -50,6 +50,7 @@
   --gutter: clamp(1.25rem, 5vw, 3rem);
   --space: clamp(3.5rem, 2rem + 4vw, 6rem);  /* vertical rhythm between sections */
   --header-h: 4.25rem;
+  --col-gap: clamp(2rem, 3vw, 3rem);  /* gutter of the full-width grids */
   --radius: 0.75rem;
   --ease: 160ms ease-out;
   --glide: cubic-bezier(0.16, 1, 0.3, 1);  /* one easing curve for all motion: quick start, long soft finish */
@@ -408,9 +409,19 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .service__subtitle { margin-bottom: 0.75rem; font-size: 1.25rem; }
 .service__lists { margin-top: 2rem; }
 .service__lists h3, .cols h3 { margin-bottom: 0.5rem; font-size: 1.0625rem; }
+.service__summary { margin-top: 1rem; max-width: 30em; color: var(--muted); }
+.service__achieve { margin-top: 1.75rem; max-width: 30em; }
+.service__achieve h3 { margin-bottom: 0.5rem; font-size: 1.0625rem; }
+.service__more { margin-top: 1.5rem; }
 @media (min-width: 900px) {
-  .service { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
-  .service__head { position: sticky; top: calc(var(--header-h) + 2.5rem); align-self: start; }
+  /* start column: the service, then "Read more" under it; end column: approach and support areas */
+  .service { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto 1fr; row-gap: 0; align-items: start; }
+  .service__head { grid-column: 1; grid-row: 1; }
+  .service__body { grid-column: 2; grid-row: 1 / span 2; }
+  .service__more { grid-column: 1; grid-row: 2; }
+}
+@media (min-width: 900px) and (max-width: 1199px) {
+  .service { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); column-gap: 3rem; }
 }
 .body-more { max-width: 40em; margin-top: 1rem; color: var(--text); }
 .cols--spaced { margin-top: 2.5rem; }
@@ -466,11 +477,96 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 /* One column where a list sits inside a column of its own (the services' support and outcome lists). */
 .list--stack { grid-template-columns: minmax(0, 1fr); }
 
+/* ---------- filling both columns: no empty start side ----------
+   (Column rules here use doubled classes, .list.list--wide and so on: the base rules come later
+   in the file with the same specificity and would otherwise win.)
+   A two-column section whose content runs long gets an aside under its heading (a quote, a
+   photo), and the heading then scrolls with the page. Content too long even for that goes full
+   width (section_wide in build.py): the heading above, with its intro beside it from 1100px,
+   and the content below in as many columns as it needs. */
+.split__aside { margin-top: clamp(1.75rem, 3vw, 2.5rem); }
+.split__aside .statement { margin-top: 0; }
+:root[lang="ja"] .statement p { word-break: auto-phrase; }
+:root[lang="zh-Hans"] .statement p { text-wrap: balance; }
+:root[lang="ja"] .panel__title { word-break: keep-all; overflow-wrap: anywhere; }
+.split__aside .photo { margin: 0; }
+@media (min-width: 900px) and (min-height: 700px) {
+  .split__head.split__head--aside { position: static; }
+}
+@media (min-width: 1100px) {
+  .wide__head--side { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: 4rem; align-items: end; }
+  .wide__head--side > :not(.wide__title) { margin: 0; padding-bottom: 0.35em; }
+  .wide__head--side.wide__head--top { align-items: start; }  /* beside a long block, align the tops */
+}
+.wide__head + .statement { margin-top: 0; max-width: 40em; }
+.overview__side .service__subtitle { margin-bottom: 0.75rem; }
+/* small laptops: a narrower heading column where the content beside it runs long */
+@media (min-width: 900px) and (max-width: 1099px) {
+  .section--wide-body .split { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 3rem; }
+}
+.wide__head > :not(.wide__title) { margin-top: 1.25rem; max-width: 40em; }
+.split__aside .panel { margin-top: 0; }
+.split__aside .service__subtitle { margin-bottom: 0; }
+.split__aside .service__subtitle + .statement { margin-top: 1.5rem; }
+@media (min-width: 641px) {
+  /* each column's first row draws its own top rule, so every rule breaks at the gutter */
+  .rows.rows--compact { border-top: 0; }
+  .rows--compact > .row:nth-child(-n+2) { border-top: 1px solid var(--line); }
+}
+@media (min-width: 900px) {
+  .rows.rows--2col, .rows.rows--3col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--col-gap); border-top: 0; }
+  .rows.rows--3col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rows--2col > .row:nth-child(-n+2), .rows--3col > .row:nth-child(-n+3) { border-top: 1px solid var(--line); }
+  .list.list--numbered-2col { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--col-gap); }
+}
+@media (min-width: 1000px) {
+  .list.list--wide { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--col-gap); }
+  .list.list--numbered-2col.list--n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* seven or eight support areas: 4 + 3 or 4 + 4, never one alone on a row */
+@media (min-width: 1000px) and (max-width: 1199px) {
+  .list.list--wide.list--n7, .list.list--wide.list--n8 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1200px) {
+  .list.list--wide.list--n7, .list.list--wide.list--n8 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .list.list--numbered-2col.list--n5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.areas--3 .area { padding-top: 1.25rem; border-top: 1px solid var(--line); }
+@media (min-width: 641px) and (max-width: 999px) {
+  .areas--3 .list.list--stack { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--col-gap); }
+}
+@media (min-width: 1000px) {
+  /* a subgrid lines up the numbers, titles, summaries, lists and links of the three columns */
+  .areas.areas--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(5, auto); column-gap: var(--col-gap); row-gap: 0; }
+  .areas--3 .area { display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 0; }
+  .areas--3 .area > :is(.area__num, h3, p, .list) { align-self: start; }
+  .areas--3 .area > .link-arrow { align-self: end; justify-self: start; }
+}
+.trio { display: grid; gap: 1.25rem; margin-bottom: clamp(2.5rem, 4vw, 3.5rem); }
+.trio p { max-width: 40em; color: var(--text); }
+.trio p:first-child { max-width: 34em; color: var(--ink); font-size: 1.125rem; line-height: 1.55; }
+@media (min-width: 1000px) {
+  .trio { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--col-gap); }
+  .grid-values.grid-values--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.5rem var(--col-gap); }
+}
+.legal-grid { display: grid; gap: 1.25rem; }
+.legal-grid p { margin: 0; }
+.legal-grid p, .legal-after { max-width: 40em; }
+.legal-after { margin-top: 2rem; }
+.legal-after p + p { margin-top: 1rem; }
+@media (min-width: 900px) {
+  .legal-grid { display: block; columns: 2; column-gap: var(--col-gap); }
+  .legal-grid > p { break-inside: avoid; margin: 0 0 1.25rem; }
+  .legal-grid > p:last-child { margin-bottom: 0; }
+  .legal-clauses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: clamp(3rem, 5vw, 5rem); }
+  .legal-clauses li:nth-child(-n+2) { margin-top: 0; }
+}
+
 .areas { display: grid; gap: 3rem; }
 .area h3 { font-size: 1.3125rem; }
 .area > p { margin: 0.5rem 0 1.25rem; color: var(--muted); }
 
-.cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem; }
+.cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem var(--col-gap); }
 
 .faq details { border-top: 1px solid var(--line); }
 .faq details:last-child { border-bottom: 1px solid var(--line); }
@@ -538,6 +634,8 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 [dir="rtl"] .dd-note[dir="ltr"] { text-align: right; } /* numbers and handles read left-to-right but align with the Arabic column */
 .channel-id { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin-bottom: 0.25rem; }
 .channel-id code { font: 600 1rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink); }
+/* a phone number reads like the other numbers on the page, not like a typed ID */
+.channel-id code.channel-number { font: inherit; font-weight: 600; color: var(--ink); }
 .copy-button {
   min-height: 2.25rem; padding: 0.375rem 0.875rem; border: 1px solid var(--field); border-radius: 999px;
   background: transparent; color: var(--ink); font-size: 0.875rem; font-weight: 600; cursor: pointer;
@@ -605,7 +703,8 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 /* ---------- legal ---------- */
 .legal-date { margin-bottom: 1.5rem; color: var(--muted); font-size: 0.9375rem; }
 .split__body > p { max-width: 40em; }
-.legal-clauses { margin: 1.5rem 0 0; padding-inline-start: 1.5em; max-width: 40em; }
+.legal-clauses { margin: 0; padding-inline-start: 1.5em; }
+.legal-clauses p { max-width: 40em; }
 .legal-clauses li { margin-top: 1.5rem; padding-inline-start: 0.25rem; }
 .legal-clauses li::marker { color: var(--accent-text); font-weight: 600; }
 .legal-clauses h3 { margin-bottom: 0.375rem; }

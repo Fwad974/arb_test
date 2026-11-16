@@ -132,23 +132,30 @@ function serve() {
   //     with color-scheme declared, it should render exactly like our own dark theme.
   const forced = await chromium.launch({ args: ['--blink-settings=forceDarkModeEnabled=true'] });
   for (const name of ['index.html', 'ar/index.html', 'zh/index.html', 'ja/index.html', 'about.html', 'contact.html']) {
-    const shots = [];
+    const tabs = [];
     for (const b of [browser, forced]) {
       const p = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark', reducedMotion: 'reduce' });
       await p.goto(base + name);
       // Finish the logo intro first, so both screenshots show the same frame. Wait, too, for the
-      // images on screen to decode: the home photo decodes asynchronously, and a screenshot taken
-      // before then shows an empty box in one browser and the photo in the other.
+      // images on screen to decode and paint (two frames): the home photo decodes
+      // asynchronously, and a screenshot taken before then shows an empty box in one browser and
+      // the photo in the other.
       await p.evaluate(async () => {
         await document.fonts.ready;
         await Promise.all([...document.images].filter((i) => { const r = i.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; })
           .map((i) => i.decode().catch(() => {})));
         document.getAnimations().filter((a) => a.effect && a.effect.getComputedTiming().endTime !== Infinity).forEach((a) => a.finish());
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       });
-      shots.push(await p.screenshot({ animations: 'disabled' }));
-      await p.close();
+      tabs.push(p);
     }
+    const shoot = () => Promise.all(tabs.map((p) => p.screenshot({ animations: 'disabled' })));
+    let shots = await shoot();
+    // Under heavy load the photo can still paint a frame late in one browser. A real repaint by
+    // forced dark mode is the same every time, so a second pair, a moment later, settles which.
+    if (!shots[0].equals(shots[1])) { await tabs[0].waitForTimeout(600); shots = await shoot(); }
     if (!shots[0].equals(shots[1])) fail(`${name}: forced dark mode changes the page (browser is repainting it)`);
+    await Promise.all(tabs.map((p) => p.close()));
   }
   await forced.close();
 
@@ -212,6 +219,37 @@ function serve() {
       if (m.photo.bottom > m.h1.top) fail(`${name}: header photo band is not above the headline`);
     }
     if (!m.place.trim()) fail(`${name}: header photo caption does not name the place`);
+    await p.close();
+  }
+
+  // 2d. Layout: no large empty space beside a heading. In every side-by-side block (a two-column
+  //     section, a service on the Services page, a full-width heading with a block beside it) the
+  //     content may run at most 300px past the heading column; longer content belongs in an aside
+  //     under the heading or in a full-width section (see "Layout" in the README).
+  for (const [w, h] of [[1440, 900], [1920, 1080]]) {
+    const p = await browser.newPage({ viewport: { width: w, height: h }, reducedMotion: 'reduce' });
+    for (const name of pages) {
+      await p.goto(base + name);
+      await p.evaluate(() => document.fonts.ready);
+      const gaps = await p.evaluate(() => {
+        const out = [];
+        // head may be several elements: a service's start column is its head plus "Read more".
+        const check = (el, heads, body) => {
+          heads = heads.filter(Boolean);
+          if (!heads.length || !body) return;
+          const rs = heads.map((x) => x.getBoundingClientRect()), b = body.getBoundingClientRect();
+          const a = { left: Math.min(...rs.map((r) => r.left)), right: Math.max(...rs.map((r) => r.right)),
+            height: Math.max(...rs.map((r) => r.bottom)) - Math.min(...rs.map((r) => r.top)) };
+          if (b.left < a.right - 1 && a.left < b.right - 1) return;  // stacked, not side by side
+          if (b.height - a.height > 300) out.push(`${((el.querySelector('h2') || {}).textContent || '').trim().slice(0, 40)} (${Math.round(b.height - a.height)}px)`);
+        };
+        document.querySelectorAll('.split').forEach((s) => check(s, [s.querySelector(':scope > .split__head')], s.querySelector(':scope > .split__body')));
+        document.querySelectorAll('.service').forEach((s) => check(s, [s.querySelector('.service__head'), s.querySelector('.service__more')], s.querySelector('.service__body')));
+        document.querySelectorAll('.wide__head--side').forEach((s) => check(s, [s.querySelector(':scope > .wide__title')], s.querySelector(':scope > :not(.wide__title)')));
+        return out;
+      });
+      for (const g of gaps) fail(`${name} @${w}px: large empty space beside the heading: ${g}`);
+    }
     await p.close();
   }
 
@@ -315,14 +353,16 @@ function serve() {
     if (!href || !decodeURIComponent(href).includes(`subject=${subject}`)) fail(`${dir} mailto wrong: ${href && decodeURIComponent(href).slice(0, 80)}`);
   }
 
-  // 6b. Messaging apps from site.env: contact page links, footer row, WeChat copy button
+  // 6b. Messaging apps from site.env: contact page links, footer row, copy buttons. WeChat and
+  //     LINE can be given a number (the WhatsApp one by default): the Contact page then shows
+  //     it with a copy button, since neither app has a web link that opens a chat from a number.
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, permissions: ['clipboard-read', 'clipboard-write'] });
   const cp = await ctx.newPage();
   for (const name of ['contact.html', 'ar/contact.html', 'zh/contact.html', 'ja/contact.html']) {
     await cp.goto(base + name);
     const wa = await cp.getAttribute('.contact-list a[href^="https://wa.me/"]', 'href').catch(() => null);
     if (!wa || !/^https:\/\/wa\.me\/\d{8,15}\?text=/.test(wa)) fail(`${name}: WhatsApp link missing or malformed (${wa})`);
-    if (!(await cp.locator('.contact-list a[href^="https://line.me/R/ti/p/"]').count())) fail(`${name}: LINE link missing`);
+    if (!(await cp.locator('.contact-list a[href^="https://line.me/"], #line .copy-button').count())) fail(`${name}: LINE missing`);
     if ((await cp.locator('.footer-apps li').count()) !== 3) fail(`${name}: footer should list 3 messaging apps`);
     if (!(await cp.locator('.hero a[href^="https://wa.me/"]').count())) fail(`${name}: WhatsApp link missing from the first screen`);
   }
@@ -333,10 +373,16 @@ function serve() {
     if ((await link.count()) !== 1 || (await link.getAttribute('target')) !== '_blank') fail(`${name}: Flopexa logo link missing`);
   }
   await cp.goto(base + 'contact.html');
-  const wechatId = (await cp.textContent('#wechat code')).trim();
-  await cp.click('#wechat .copy-button');
-  if ((await cp.evaluate(() => navigator.clipboard.readText())) !== wechatId) fail('WeChat copy button did not copy the ID');
-  if ((await cp.textContent('#wechat .copy-button')).trim() !== 'Copied') fail('WeChat copy button gave no feedback');
+  for (const app of ['wechat', 'line']) {
+    if (!(await cp.locator(`#${app} .copy-button`).count())) continue;
+    const shown = (await cp.textContent(`#${app} code`)).trim();
+    await cp.click(`#${app} .copy-button`);
+    const copied = await cp.evaluate(() => navigator.clipboard.readText());
+    // a number is shown spaced (+966 53 333 7712) and copied whole (+966533337712)
+    const same = shown.startsWith('+') ? copied === '+' + shown.replace(/\D/g, '') : copied === shown;
+    if (!same) fail(`${app} copy button copied "${copied}" for "${shown}"`);
+    if ((await cp.textContent(`#${app} .copy-button`)).trim() !== 'Copied') fail(`${app} copy button gave no feedback`);
+  }
   await ctx.close();
 
   // 6c. Logo: inline SVG whose letters follow the theme. On arrival the landing animation forms
@@ -539,5 +585,5 @@ function serve() {
   await browser.close();
   server.close();
   if (failures.length) { console.error(`QA FAILED (${failures.length})\n  ` + failures.join('\n  ')); process.exit(1); }
-  console.log(`QA passed: ${pages.length} pages (English, Arabic, Chinese, Japanese) x 8 widths x light/dark, contrast, forced dark, first screen, large screens, logo, landing animation, motion, logo strip, menus, anchors, forms, language menu, messaging, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
+  console.log(`QA passed: ${pages.length} pages (English, Arabic, Chinese, Japanese) x 8 widths x light/dark, contrast, forced dark, first screen, large screens, header photo, empty space beside headings, logo, landing animation, motion, logo strip, menus, anchors, forms, language menu, messaging, redirects, cookies, 404.${SHOTS ? ' Screenshots in qa-output/.' : ''}`);
 })();

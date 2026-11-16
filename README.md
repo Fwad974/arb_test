@@ -122,10 +122,17 @@ appears on the Contact page's first screen. Their details live in `site.env`, on
 | Setting | What to put | What visitors get |
 |---|---|---|
 | `WHATSAPP_NUMBER` | International number, e.g. `+966533337712` | A WhatsApp chat with a greeting already typed, in the page's language |
-| `WECHAT_ID` | The WeChat ID | The ID with a "Copy ID" button (WeChat has no web link that opens a chat) |
-| `WECHAT_QR` | Optional: file name of a QR code image in `assets/images/contact/` | The QR code under the ID |
-| `LINE_ID` | The LINE Official Account ID, e.g. `@elevatearabia`, or a full `https://line.me/...` link | An "Add us on LINE" link |
+| `WECHAT_ID` | `whatsapp` (the WhatsApp number, the current setting), another number (`+...`), or a WeChat ID | The number or ID with a copy button and how to find it in WeChat (WeChat has no web link that opens a chat) |
+| `WECHAT_QR` | Optional: file name of a QR code image in `assets/images/contact/` | The QR code under the number or ID |
+| `LINE_ID` | `whatsapp` (the WhatsApp number, the current setting), another number (`+...`), a LINE Official Account ID such as `@elevatearabia`, or a full `https://line.me/...` link | A number: shown with a copy button and how to find it under Add friends in LINE. An ID or link: an "Add us on LINE" link |
 
+- WeChat and LINE are set to `whatsapp`, so all three apps use the WhatsApp number. Changing
+  `WHATSAPP_NUMBER` changes all three. Neither WeChat nor LINE has a web link that opens a chat
+  from a number, so the Contact page shows the number with a copy button, and the footer links
+  to it. People find the account by searching for the number in the app, so the number must be
+  registered in WeChat and LINE and allow being found by phone number. In WeChat this is under
+  Me → Settings → Friends → Methods for Adding Me → Mobile Number. In LINE it is under Settings →
+  Friends → Allow others to add by phone number.
 - Leave a value empty to hide that app.
 - Add `# placeholder` after a value and every build reminds you to replace it.
 - A GitHub repository variable with the same name (Settings → Secrets and variables → Actions →
@@ -326,13 +333,31 @@ system setting. Every colour is a token in `styles.css` with a light and a dark 
   the content width all grow together, so a large monitor shows the same composition at a
   readable size instead of a small column in a sea of white. The scale starts from the
   visitor's own browser text size, so a larger default text setting makes the whole site larger.
-- **Layout:** 76rem max width (1216px on a laptop, about 1520px on a 2560px screen) and
-  two-column sections (heading on the start side, content on the end side), stacking to one
-  column below 900px. On wide screens the section heading stays in view while its content
-  scrolls past. From 1100px wide, page headers put the intro beside the headline, and from
-  1200px the home page's header fills the first screen, with the Jeddah photo running to the
-  screen edge beside it.
-  The team list fills four columns.
+- **Layout:** 76rem max width (1216px on a laptop, about 1520px on a 2560px screen). From 1100px
+  wide, page headers put the intro beside the headline, and from 1200px the home page's header
+  fills the first screen, with the Jeddah photo running to the screen edge beside it. Sections
+  come in two shapes, and both avoid empty space beside a heading:
+  - **Two columns** (`section()` in `build.py`): heading on the start side, content on the end
+    side, stacking to one column below 900px. A short section's heading stays in view while its
+    content scrolls past. When the content runs long, the start side gets an aside under the
+    heading instead, such as the section's quote, a photo or the partner card, so both columns
+    carry content. Each service on the Services page also uses both columns: its summary and
+    what it helps to achieve on the start side, the approach and support areas on the end side.
+  - **Full width** (`section_wide()`), for content too long to sit beside a heading: the heading
+    above, with its intro beside it from 1100px, and the content below in as many columns as it
+    needs. Examples are the services and sectors as rows in two or three columns, the Advisory
+    page's three disciplines side by side, the values and mission in three columns, the
+    support areas in three or four, the legal text in two, and the team in four.
+    - **Column counts:** the column count is chosen so no item sits alone on the last row.
+      Seven or eight support areas run 4 + 3 or 4 + 4, and the home page's seven sectors end
+      with an "All sectors" cell.
+    - **Alignment:** the Advisory disciplines line up their titles, lists and links across the
+      columns, and each column's hairlines break at the gutter.
+    - **Legal text:** it reads down one column, then the next.
+    - **Phones:** each service on the Services page ends with its "Read more" link.
+
+  QA step 2d guards this: on every page, in all four languages at 1440 and 1920px wide, a
+  side-by-side block fails if its content runs more than 300px past the heading beside it.
 
 ## Contact form
 

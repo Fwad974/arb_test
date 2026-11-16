@@ -189,6 +189,7 @@ _SERVICES = {
         short='自動車、産業オペレーション、ものづくりの変革。',
         tag='産業とオペレーション',
         title='戦略から工場の現場まで、産業の準備を強化',
+        overview_more='産業戦略は、工場の現場で機能してこそ意味を持つ。',
         challenges=['計画と生産の乖離', '技術力の不足', '立ち上げや量産化の不確実性', '不十分な生産準備'],
         deliverables=['産業準備度の評価', 'オペレーション改革の優先事項', '生産立ち上げの実行計画', '能力と専門家支援のマップ'],
         faq=[
@@ -676,6 +677,9 @@ UI = dict(
     hero_photo_place='夕暮れのジッダ・ウォーターフロント',
     photo_credit='写真：',
     photo_cropped='トリミング',
+    copy_number='番号をコピー',
+    wechat_hint_phone='WeChat でこの番号を検索して追加してください。',
+    line_hint_phone='LINE の「友だち追加」でこの番号を検索して追加してください。',
 )
 
 complete(globals())

@@ -142,34 +142,66 @@ def brand_icon(name):
             f'<path d="{BRAND_ICONS[name]}"/></svg>')
 
 
+def phone_number(raw, setting):
+    """A full international number from site.env: (digits, the number as the site shows it)."""
+    digits = re.sub(r'\D', '', raw)
+    if not 8 <= len(digits) <= 15:
+        raise ValueError(f'site.env: {setting} must be a full international number, e.g. +966533337712')
+    return digits, next((label for label, number in C.SITE['phones'] if re.sub(r'\D', '', number) == digits), '+' + digits)
+
+
+def app_number(value, setting):
+    """WECHAT_ID or LINE_ID given as a phone number: 'whatsapp' (the WhatsApp number) or +<number>.
+    Neither app has a web link that opens a chat from a number, so the site shows the number to
+    search for in the app, with a copy button. Returns None when the value is an ID instead."""
+    if value.lower() == 'whatsapp':
+        if not SITE_ENV['WHATSAPP_NUMBER']:
+            raise ValueError(f'site.env: {setting}=whatsapp needs WHATSAPP_NUMBER')
+        return phone_number(SITE_ENV['WHATSAPP_NUMBER'], 'WHATSAPP_NUMBER')
+    if value.startswith('+'):
+        return phone_number(value, setting)
+    return None
+
+
 def channels():
-    """Messaging apps configured in site.env, validated, in display order."""
+    """Messaging apps configured in site.env, validated, in display order. copy is what the copy
+    button copies (a WeChat ID, or a number to search for); phone marks a number."""
     out = []
-    digits = re.sub(r'\D', '', SITE_ENV['WHATSAPP_NUMBER'])
-    if digits:
-        if not 8 <= len(digits) <= 15:
-            raise ValueError('site.env: WHATSAPP_NUMBER must be a full international number, e.g. +966533337712')
-        shown = next((label for label, number in C.SITE['phones'] if re.sub(r'\D', '', number) == digits), '+' + digits)
+    if SITE_ENV['WHATSAPP_NUMBER']:
+        digits, shown = phone_number(SITE_ENV['WHATSAPP_NUMBER'], 'WHATSAPP_NUMBER')
         out.append(dict(key='whatsapp', name=t('whatsapp'), action=t('whatsapp_action'), value=shown,
                         href=f'https://wa.me/{digits}?text={quote(t("whatsapp_text"))}'))
     wechat = SITE_ENV['WECHAT_ID']
     if wechat:
-        if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{5,19}', wechat):
-            raise ValueError('site.env: WECHAT_ID must be 6-20 letters, digits, _ or -, starting with a letter')
         qr = SITE_ENV['WECHAT_QR']
         if qr and not (ROOT / 'assets' / 'images' / 'contact' / qr).exists():
             raise ValueError(f'site.env: WECHAT_QR file assets/images/contact/{qr} not found')
-        out.append(dict(key='wechat', name=t('wechat'), value=wechat, qr=qr, href='contact.html#wechat'))
+        number = app_number(wechat, 'WECHAT_ID')
+        if number:
+            out.append(dict(key='wechat', name=t('wechat'), value=number[1], copy='+' + number[0], phone=True,
+                            qr=qr, href='contact.html#wechat'))
+        else:
+            if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{5,19}', wechat):
+                raise ValueError('site.env: WECHAT_ID must be 6-20 letters, digits, _ or -, starting with a letter, '
+                                 'a full international number, or whatsapp')
+            out.append(dict(key='wechat', name=t('wechat'), value=wechat, copy=wechat, phone=False, qr=qr,
+                            href='contact.html#wechat'))
     line = SITE_ENV['LINE_ID']
     if line:
-        if line.startswith('https://line.me/'):
-            href, shown = line, line
+        number = app_number(line, 'LINE_ID')
+        if number:
+            out.append(dict(key='line', name=t('line'), value=number[1], copy='+' + number[0], phone=True,
+                            href='contact.html#line'))
         else:
-            handle = line.lstrip('@')
-            if not re.fullmatch(r'[A-Za-z0-9._-]{3,20}', handle):
-                raise ValueError('site.env: LINE_ID must be an Official Account ID such as @elevatearabia')
-            href, shown = f'https://line.me/R/ti/p/%40{handle}', '@' + handle
-        out.append(dict(key='line', name=t('line'), action=t('line_action'), value=shown, href=href))
+            if line.startswith('https://line.me/'):
+                href, shown = line, line
+            else:
+                handle = line.lstrip('@')
+                if not re.fullmatch(r'[A-Za-z0-9._-]{3,20}', handle):
+                    raise ValueError('site.env: LINE_ID must be an Official Account ID such as @elevatearabia, '
+                                     'a full international number, or whatsapp')
+                href, shown = f'https://line.me/R/ti/p/%40{handle}', '@' + handle
+            out.append(dict(key='line', name=t('line'), action=t('line_action'), value=shown, href=href))
     return out
 
 
@@ -325,19 +357,23 @@ REDIRECTS = {
 }
 
 
-def section(eyebrow, heading, body, intro='', id=None, footer='', cls=''):
+def section(eyebrow, heading, body, intro='', id=None, footer='', cls='', aside=''):
     """Two-column editorial section: heading on the start side, content on the end side.
-    cls='section--tint' sets it on a full-width sand band."""
+    cls='section--tint' sets it on a full-width sand band. aside goes under the heading (a
+    quote, a photo), so a long section fills both columns instead of leaving the start side
+    empty; the heading then scrolls with the page instead of staying in view."""
     id_attr = f' id="{id}"' if id else ''
     intro_html = f'<p class="section-intro">{e(intro)}</p>' if intro else ''
     footer_html = f'<div class="section-foot">{footer}</div>' if footer else ''
+    aside_html = f'<div class="split__aside">{aside}</div>' if aside else ''
     return f'''
 <section class="section{' ' + cls if cls else ''}"{id_attr}>
   <div class="wrap split">
-    <div class="split__head">
+    <div class="split__head{' split__head--aside' if aside else ''}">
       <p class="eyebrow">{e(eyebrow)}</p>
       <h2>{hl(heading)}</h2>
       {intro_html}
+      {aside_html}
     </div>
     <div class="split__body">
       {body}
@@ -347,19 +383,25 @@ def section(eyebrow, heading, body, intro='', id=None, footer='', cls=''):
 </section>'''
 
 
-def section_wide(eyebrow, heading, body, intro='', id=None):
-    """Full-width section: heading block above, content across the whole width."""
+def section_wide(eyebrow, heading, body, intro='', id=None, footer='', cls='', side='', top=False):
+    """Full-width section, for content too long to sit beside its heading: the heading above,
+    with its intro (or side, any block) beside it on wide screens, and the content across the
+    whole width below, in as many columns as it needs."""
     id_attr = f' id="{id}"' if id else ''
-    intro_html = f'<p class="section-intro">{e(intro)}</p>' if intro else ''
+    side_html = side or (f'<p class="section-intro">{e(intro)}</p>' if intro else '')
+    footer_html = f'<div class="section-foot">{footer}</div>' if footer else ''
     return f'''
-<section class="section"{id_attr}>
+<section class="section{' ' + cls if cls else ''}"{id_attr}>
   <div class="wrap">
-    <div class="wide__head">
-      <p class="eyebrow">{e(eyebrow)}</p>
-      <h2>{hl(heading)}</h2>
-      {intro_html}
+    <div class="wide__head{' wide__head--side' if side_html else ''}{' wide__head--top' if top else ''}">
+      <div class="wide__title">
+        <p class="eyebrow">{e(eyebrow)}</p>
+        <h2>{hl(heading)}</h2>
+      </div>
+      {side_html}
     </div>
     {body}
+    {footer_html}
   </div>
 </section>'''
 
@@ -393,12 +435,13 @@ def page_hero(eyebrow, title, lead, actions='', crumbs=None, extra='', cls='', p
 </section>'''
 
 
-def rows(items, compact=False):
+def rows(items, compact=False, cols=1):
     """Hairline list. item = dict(title, desc, href=None, num=None, meta=None, extra=None).
-    compact=True shows titles only, in two columns from tablet width up."""
+    compact=True shows titles only, in two columns from tablet width up. cols=2 or 3 runs the
+    rows in that many columns on wide screens, for a full-width section."""
     out = []
     for it in items:
-        num_html = f'<span class="row__num">{e(it["num"])}</span>' if it.get('num') else ''
+        num_html = f'<span class="row__num">{e(it["num"])}</span>' if it.get('num') is not None else ''
         kicker = f'<span class="row__kicker">{e(it["meta"])}</span>' if it.get('meta') else ''
         extra = it.get('extra', '')
         desc = '' if compact else f'<span class="row__desc">{e(it["desc"])}</span>'
@@ -410,13 +453,18 @@ def rows(items, compact=False):
         else:
             id_attr = f' id="{it["id"]}"' if it.get('id') else ''
             out.append(f'<li class="row"{id_attr}><div class="row__link row__link--static">{inner}</div></li>')
-    cls = 'rows' + (' rows--numbered' if any(i.get('num') for i in items) else '') + (' rows--compact' if compact else '')
+    cls = ('rows' + (' rows--numbered' if any(i.get('num') is not None for i in items) else '') + (' rows--compact' if compact else '')
+           + (f' rows--{cols}col' if cols > 1 else ''))
     return f'<ul class="{cls}">' + ''.join(out) + '</ul>'
 
 
-def plain_list(items, numbered=False, stacked=False):
+def plain_list(items, numbered=False, stacked=False, wide=False):
+    """wide=True runs three columns on wide screens (two for a numbered list), for a full-width section."""
     tag = 'ol' if numbered else 'ul'
-    cls = 'list list--numbered' if numbered else ('list list--stack' if stacked else 'list')
+    cls = ('list list--numbered' + (' list--numbered-2col' if wide else '') if numbered
+           else ('list list--stack' if stacked else ('list list--wide' if wide else 'list')))
+    if wide:
+        cls += f' list--n{len(items)}'
     return f'<{tag} class="{cls}">' + ''.join(f'<li>{e(x)}</li>' for x in items) + f'</{tag}>'
 
 
@@ -536,7 +584,7 @@ def layout(slug, title, description, body):
     if channels():
         items = []
         for ch in channels():
-            external = ch['key'] != 'wechat'
+            external = ch['href'].startswith('https://')
             attrs = ' target="_blank" rel="noopener"' if external else ''
             sr = f'<span class="visually-hidden">{e(t("new_tab"))}</span>' if external else ''
             items.append(f'<li><a href="{e(ch["href"])}"{attrs}>{brand_icon(ch["key"])}{e(ch["name"])}{sr}</a></li>')
@@ -683,6 +731,17 @@ def hero_photo():
             f'{credit}</figcaption></figure>')
 
 
+def partner_card(eyebrow=True):
+    """Hirayama Holdings, the international partner: name, where it is, a link to its site.
+    In Japanese the name may break only after 株式会社, not inside the katakana."""
+    name = e(C.PARTNER['name']).replace('株式会社', '株式会社<wbr>', 1)
+    label = f'<p class="eyebrow">{e(t("partner_eyebrow"))}</p>' if eyebrow else ''
+    return (f'<div class="panel">{label}'
+            f'<p class="panel__title">{name}</p>'
+            f'<p>{e(t("partner_location"))}</p>'
+            f'{link_arrow(C.PARTNER["url"], t("visit_partner"), external=True)}</div>')
+
+
 def build_home():
     stats = '<dl class="stats">' + ''.join(
         f'<div class="stat"><dt>{e(v)}</dt><dd>{e(l)}</dd></div>' for v, l in C.STATS) + '</dl>'
@@ -694,13 +753,14 @@ def build_home():
     # The live home page's own sections, in its order: who we are, services, partner, sectors.
     who = section(
         t('about_us_eyebrow'), t('who_heading'),
-        f'<p class="body-lg">{e(t("who_body"))}</p>{plain_list(t("who_list"))}'
-        f'<blockquote class="statement"><p>{e(t("who_statement"))}</p></blockquote>',
-        footer=link_arrow('about.html', t('read_more')))
+        f'<p class="body-lg">{e(t("who_body"))}</p>{plain_list(t("who_list"))}',
+        footer=link_arrow('about.html', t('read_more')),
+        aside=f'<blockquote class="statement"><p>{e(t("who_statement"))}</p></blockquote>', cls='section--wide-body')
 
-    services = section(
+    services = section_wide(
         t('capabilities_eyebrow'), t('services_heading'),
-        rows([dict(num=num(i + 1), title=a['label'], desc=a['short'], href=a['href']) for i, a in enumerate(AREAS)]),
+        rows([dict(num=num(i + 1), title=a['label'], desc=a['short'], href=a['href']) for i, a in enumerate(AREAS)],
+             cols=2),
         intro=t('services_intro'),
         footer='<div class="actions actions--tight">' + button('contact.html', t('cta_discuss'))
                + link_arrow('services.html', t('all_services')) + '</div>')
@@ -708,7 +768,8 @@ def build_home():
     partner = section(
         t('home_partner_eyebrow'), t('home_partner_heading'),
         f'<p class="body-lg">{e(t("partner_body"))}</p><p class="body-more">{e(t("partner_body_more"))}</p>',
-        footer=link_arrow('about.html#partnership', t('our_partnership')))
+        footer=link_arrow('about.html#partnership', t('our_partnership')),
+        aside=partner_card(eyebrow=False))
 
     steps = '<ol class="steps">' + ''.join(
         f'<li class="step"><span class="step__num">{num(i + 1)}</span><h3>{e(x)}</h3><p>{e(d)}</p></li>'
@@ -717,11 +778,12 @@ def build_home():
 
     network = trust_strip(C.CLIENTS_NETWORK)
 
-    sectors = section(
+    sectors = section_wide(
         t('customer_base_eyebrow'), t('sectors_heading'),
         rows([dict(num=num(i + 1), title=s['label'], desc=s['desc'], href=f'sectors.html#{s["slug"]}')
-              for i, s in enumerate(C.SECTORS)], compact=True),
-        intro=t('sectors_intro'), footer=link_arrow('sectors.html', t('all_sectors')))
+              for i, s in enumerate(C.SECTORS)] + [dict(num='', title=t('all_sectors'), desc='', href='sectors.html')],
+             compact=True, cols=2),
+        intro=t('sectors_intro'))
 
     body = hero + network + who + services + partner + approach + sectors + cta(
         t('home_cta_title'), t('home_cta_body'), t('cta_discuss'))
@@ -729,23 +791,24 @@ def build_home():
 
 
 def service_block(i, a):
-    """One service on the Services page, with the live site's text for it."""
+    """One service on the Services page, with the live site's text for it. Both columns carry
+    content: the start side the service, its summary and what it helps to achieve; the end side
+    the approach and the typical support areas (two columns of them on wide screens)."""
     title = f'<h3 class="service__subtitle">{e(a["approach_title"])}</h3>' if a.get('approach_title') else ''
     return f'''
 <article class="service" id="{a["id"]}">
   <div class="service__head">
     <span class="service__num">{num(i + 1)}</span>
     <h2>{e(a["label"])}</h2>
-    {link_arrow(a["href"], t("read_more"))}
+    <p class="service__summary">{e(a["home"])}</p>
+    <div class="service__achieve"><h3>{e(t("achieve_label"))}</h3>{plain_list(a["outcomes"], stacked=True)}</div>
   </div>
   <div class="service__body">
     <p class="eyebrow">{e(t("approach_label"))}</p>
     {title}<p class="body-lg">{e(a["approach"])}</p>
-    <div class="cols service__lists">
-      <div><h3>{e(t("support_label"))}</h3>{plain_list(a["support"], stacked=True)}</div>
-      <div><h3>{e(t("achieve_label"))}</h3>{plain_list(a["outcomes"], stacked=True)}</div>
-    </div>
+    <div class="service__lists"><h3>{e(t("support_label"))}</h3>{plain_list(a["support"])}</div>
   </div>
+  <div class="service__more">{link_arrow(a["href"], t("read_more"))}</div>
 </article>'''
 
 
@@ -753,13 +816,14 @@ def build_services():
     hero = page_hero(t('services_eyebrow'), t('services_hero_title'), t('services_hero_lead'))
     intro = section(
         t('areas_eyebrow'), t('areas_heading'),
-        f'<p class="body-lg">{e(t("areas_intro"))}</p><p class="body-more">{e(t("areas_intro_more"))}</p>')
+        f'<p class="body-lg">{e(t("areas_intro"))}</p><p class="body-more">{e(t("areas_intro_more"))}</p>',
+        cls='section--wide-body')
     listing = ('<section class="section services-list"><div class="wrap">'
                + ''.join(service_block(i, a) for i, a in enumerate(AREAS)) + '</div></section>')
     journey = section(
         t('journey_eyebrow'), t('journey_heading'),
-        f'<p class="body-lg">{e(t("journey_body"))}</p>'
-        f'<blockquote class="statement"><p>{e(t("journey_statement"))}</p></blockquote>')
+        f'<p class="body-lg">{e(t("journey_body"))}</p>',
+        aside=f'<blockquote class="statement"><p>{e(t("journey_statement"))}</p></blockquote>')
     page('services', t('services_title'), t('services_desc'),
          hero + intro + listing + journey + cta(t('services_cta_title'), t('services_cta_body'), t('cta_discuss')))
 
@@ -779,19 +843,28 @@ def build_detail(item, is_sector=False):
 
     subtitle = f'<h3 class="service__subtitle">{e(area["approach_title"])}</h3>' if area and area.get('approach_title') else ''
     more = f'<blockquote class="statement"><p>{e(item["overview_more"])}</p></blockquote>' if item.get('overview_more') else ''
-    overview = section(t('overview_eyebrow'), t('overview_heading'),
-                       f'{subtitle}<p class="body-lg">{e(item.get("overview") or area["approach"])}</p>{more}')
+    # A page's own overview is short: it sits beside the heading, with the quote below, so
+    # neither column runs empty in any language. Industrial and Construction Technology reuse
+    # the Services page's long approach text: their subtitle or quote goes under the heading.
+    if item.get('overview'):
+        overview = section_wide(t('overview_eyebrow'), t('overview_heading'), more,
+                                side=f'<div class="overview__side">{subtitle}<p class="body-lg">{e(item["overview"])}</p></div>',
+                                top=True)
+    else:
+        overview = section(t('overview_eyebrow'), t('overview_heading'),
+                           f'<p class="body-lg">{e(area["approach"])}</p>', aside=subtitle + more)
 
-    support = section(t('support_eyebrow'), t('support_heading'), plain_list(item.get('needs') or area['support']),
-                      id='support')
+    support = section_wide(t('support_eyebrow'), t('support_heading'), plain_list(item.get('needs') or area['support'], wide=True),
+                           id='support')
 
     # Advisory covers three of the eight services; each keeps its anchor (#strategy and so on).
     disciplines = ''
     if slug == 'advisory':
         parts = [a for a in AREAS if a['page'] == 'advisory']
-        disciplines = section(t('areas_detail_eyebrow'), t('areas_detail_heading'), '<div class="areas">' + ''.join(
+        # Across the full width: the three disciplines side by side on wide screens.
+        disciplines = section_wide(t('areas_detail_eyebrow'), t('areas_detail_heading'), '<div class="areas areas--3">' + ''.join(
             f'<div class="area" id="{a["id"]}"><span class="area__num">{num(i + 1)}</span><h3>{e(a["label"])}</h3>'
-            f'<p>{e(a["home"])}</p>{plain_list(a["support"])}'
+            f'<p>{e(a["home"])}</p>{plain_list(a["support"], stacked=True)}'
             f'{link_arrow("services.html#" + a["id"], t("read_more"))}</div>'
             for i, a in enumerate(parts)) + '</div>')
 
@@ -799,23 +872,25 @@ def build_detail(item, is_sector=False):
         left, right = (item['challenges_title'], item['challenges']), (t('why_title'), item['why'])
     else:
         left, right = (t('challenges_title'), item['challenges']), (t('achieve_label'), area['outcomes'])
-    outcomes = section(
+    # Across the full width, the two lists side by side.
+    outcomes = section_wide(
         t('outcomes_eyebrow'), t('outcomes_heading'),
         f'''<div class="cols">
           <div><h3>{e(left[0])}</h3>{plain_list(left[1], stacked=True)}</div>
           <div><h3>{e(right[0])}</h3>{plain_list(right[1], stacked=True)}</div>
         </div>''')
 
+    # Across the full width, like the section before it, the examples in two columns.
     if item.get('examples'):
-        examples = section(t('examples_eyebrow'), t('examples_heading'), plain_list(item['examples'], numbered=True))
+        examples = section_wide(t('examples_eyebrow'), t('examples_heading'), plain_list(item['examples'], numbered=True, wide=True))
     else:
-        examples = section(t('outputs_title'), t('examples_heading'), plain_list(item['deliverables'], numbered=True))
+        examples = section_wide(t('outputs_title'), t('examples_heading'), plain_list(item['deliverables'], numbered=True, wide=True))
 
     questions = section(t('faq_eyebrow'), t('faq_heading'), faq(item['faq']))
 
     related_items = [s for s in C.SERVICES if s['slug'] != slug][:3]
-    related = section(t('related_eyebrow'), t('related_heading'),
-                      rows([dict(title=s['label'], desc=s['short'], href=f'{s["slug"]}.html') for s in related_items]))
+    related = section_wide(t('related_eyebrow'), t('related_heading'),
+                           rows([dict(title=s['label'], desc=s['short'], href=f'{s["slug"]}.html') for s in related_items], cols=3))
 
     body = hero + overview + support + disciplines + outcomes + examples + questions + related + cta(
         t('detail_cta_title'), t('detail_cta_body'),
@@ -830,12 +905,12 @@ def build_sectors():
         extra = (f'<span class="row__more">{link_arrow(s["link"], s["link_label"])}</span>' if s['link'] else '')
         items.append(dict(id=s['slug'], num=num(i + 1), title=s['label'], desc=s['desc'], meta=s['category'], extra=extra))
     overview = section(t('overview_eyebrow'), t('overview_heading'), f'<p class="body-lg">{e(t("sectors_overview"))}</p>')
-    listing = section(t('focus_eyebrow'), t('focus_heading'), rows(items), intro=t('focus_intro'))
-    why = section(
+    listing = section_wide(t('focus_eyebrow'), t('focus_heading'), rows(items, cols=2), intro=t('focus_intro'))
+    why = section_wide(
         t('why_eyebrow'), t('why_heading'),
-        f'<p class="body-lg">{e(t("why_body"))}</p>'
-        f'<div class="cols cols--spaced"><div><h3>{e(t("why_title"))}</h3>{plain_list(t("sector_why"), stacked=True)}</div>'
+        f'<div class="cols"><div><h3>{e(t("why_title"))}</h3>{plain_list(t("sector_why"), stacked=True)}</div>'
         f'<div><h3>{e(t("examples_eyebrow"))}</h3>{plain_list(t("sector_examples"), numbered=True)}</div></div>',
+        side=f'<p class="body-lg">{e(t("why_body"))}</p>',
         footer=link_arrow('life-sciences.html', t('ls_link')))
     page('sectors', t('sectors_title'), t('sectors_desc'),
          hero + overview + listing + why + cta(t('sectors_cta_title'), t('sectors_cta_body'), t('sectors_cta_label')))
@@ -845,29 +920,29 @@ def build_about():
     hero = page_hero(t('nav_about'), t('about_hero_title'), t('about_hero_lead'))
     who = section(
         t('who_eyebrow'), t('about_who_heading'),
-        plain_list(t('about_who_list'), numbered=True)
-        + f'<blockquote class="statement"><p>{e(t("about_statement"))}</p></blockquote>')
+        plain_list(t('about_who_list'), numbered=True),
+        aside=f'<blockquote class="statement"><p>{e(t("about_statement"))}</p></blockquote>')
 
     def paras(texts):
         return f'<p class="body-lg">{e(texts[0])}</p>' + ''.join(f'<p class="body-more">{e(x)}</p>' for x in texts[1:])
 
     # As on the live About page: "Our story" is how Elevate and Hirayama came to bring Kaizen to
     # the Middle East, beside the two teams' photo; the mission opens "What we value".
+    # The two teams' photo sits under the heading, beside the story.
     story = section(
         t('partnership_eyebrow'), t('story_heading'),
         paras(t('story_body'))
-        + f'<figure class="photo">{img(C.PARTNER["photo"], C.PARTNER["photo_alt"])}'
-        f'<figcaption>{e(C.PARTNER["photo_alt"])}{e(t("period"))}</figcaption></figure>'
-        f'<div class="panel"><p class="eyebrow">{e(t("partner_eyebrow"))}</p>'
-        f'<p class="panel__title">{e(C.PARTNER["name"])}</p>'
-        f'<p>{e(t("partner_location"))}</p>'
-        f'{link_arrow(C.PARTNER["url"], t("visit_partner"), external=True)}</div>'
+        + partner_card()
         + (f'<h3 class="group-title group-title--logos">{e(C.PARTNER_CLIENTS_LABEL)}</h3>'
            + logos(C.CLIENTS_GLOBAL) if C.SHOW_PARTNER_CLIENTS else ''),
-        id='partnership')
-    values = section(
+        id='partnership',
+        aside=f'<figure class="photo">{img(C.PARTNER["photo"], C.PARTNER["photo_alt"])}'
+              f'<figcaption>{e(C.PARTNER["photo_alt"])}{e(t("period"))}</figcaption></figure>')
+    # Across the full width: the mission in three columns, then the six values in three.
+    values = section_wide(
         t('values_eyebrow'), t('values_heading'),
-        paras(t('values_intro')) + '<ul class="grid-values">' + ''.join(
+        '<div class="trio">' + ''.join(f'<p>{e(x)}</p>' for x in t('values_intro')) + '</div>'
+        + '<ul class="grid-values grid-values--3">' + ''.join(
             f'<li><span class="area__num">{num(i + 1)}</span><h3>{e(x)}</h3><p>{e(d)}</p></li>'
             for i, (x, d) in enumerate(C.VALUES)) + '</ul>')
 
@@ -902,12 +977,15 @@ def build_contact():
 
     def channel_row(ch):
         dt = f'<dt>{brand_icon(ch["key"])}{e(ch["name"])}</dt>'
-        if ch['key'] == 'wechat':
+        if 'copy' in ch:
             qr = (f'<img class="wechat-qr" src="{asset("images/contact/" + ch["qr"])}" alt="{e(t("wechat_qr_alt"))}" '
-                  f'width="160" height="160" loading="lazy">' if ch['qr'] else '')
-            return (f'<div id="wechat">{dt}<dd><span class="channel-id"><code dir="ltr">{e(ch["value"])}</code>'
-                    f'<button class="copy-button" type="button" data-copy="{e(ch["value"])}" data-copied="{e(t("copied"))}" hidden>'
-                    f'{e(t("copy"))}</button></span><span class="dd-note">{e(t("wechat_hint"))}</span>{qr}</dd></div>')
+                  f'width="160" height="160" loading="lazy">' if ch.get('qr') else '')
+            hint = t(f'{ch["key"]}_hint_phone') if ch['phone'] else t('wechat_hint')
+            code_cls = ' class="channel-number"' if ch['phone'] else ''
+            return (f'<div id="{ch["key"]}">{dt}<dd><span class="channel-id"><code{code_cls} dir="ltr">{e(ch["value"])}</code>'
+                    f'<button class="copy-button" type="button" data-copy="{e(ch["copy"])}" data-copied="{e(t("copied"))}" hidden>'
+                    f'{e(t("copy_number") if ch["phone"] else t("copy"))}</button></span>'
+                    f'<span class="dd-note">{e(hint)}</span>{qr}</dd></div>')
         return (f'<div>{dt}<dd>{link_arrow(ch["href"], ch["action"], external=True)}'
                 f'<span class="dd-note" dir="ltr">{e(ch["value"])}</span></dd></div>')
 
@@ -977,19 +1055,24 @@ def build_contact():
 def build_legal():
     updated = f'<p class="legal-date">{e(t("last_updated", date=C.LEGAL_UPDATED))}</p>'
     terms_text = C.TERMS
+    # Each part across the full width, its paragraphs or clauses in two columns on wide screens.
     terms = (page_hero(t('legal_eyebrow'), t('terms'), t('terms_lead'))
-             + section(t('disclaimer_eyebrow'), t('disclaimer_heading'),
-                       updated + ''.join(f'<p>{e(x)}</p>' for x in terms_text['disclaimer']), id='disclaimer')
-             + section(t('termsofuse_eyebrow'), t('termsofuse_heading'),
-                       f'<p>{e(terms_text["intro"])}</p><ol class="legal-clauses">' + ''.join(
-                           f'<li><h3>{e(h)}</h3><p>{e(x)}</p></li>' for h, x in terms_text['clauses']) + '</ol>', id='terms'))
+             + section_wide(t('disclaimer_eyebrow'), t('disclaimer_heading'),
+                            '<div class="legal-grid">' + ''.join(f'<p>{e(x)}</p>' for x in terms_text['disclaimer']) + '</div>',
+                            side=updated, id='disclaimer')
+             + section_wide(t('termsofuse_eyebrow'), t('termsofuse_heading'),
+                            '<ol class="legal-clauses">' + ''.join(
+                                f'<li><h3>{e(h)}</h3><p>{e(x)}</p></li>' for h, x in terms_text['clauses']) + '</ol>',
+                            side=f'<p class="section-intro">{e(terms_text["intro"])}</p>', id='terms'))
     page('terms', t('terms'), t('terms_desc'), terms)
 
     pr = C.PRIVACY
     contact = f'<p>{e(t("privacy_contact"))} {mailto(pr["contact"])}{e(t("period"))}</p>'
     privacy = (page_hero(t('legal_eyebrow'), t('privacy'), t('privacy_lead'))
-               + section(t('privacy_eyebrow'), t('privacy_heading'),
-                         updated + ''.join(f'<p>{e(x)}</p>' for x in pr['paragraphs']) + contact + f'<p>{e(pr["changes"])}</p>'))
+               + section_wide(t('privacy_eyebrow'), t('privacy_heading'),
+                              '<div class="legal-grid">' + ''.join(f'<p>{e(x)}</p>' for x in pr['paragraphs']) + '</div>'
+                              + f'<div class="legal-after">{contact}<p>{e(pr["changes"])}</p></div>',
+                              side=updated))
     page('privacy', t('privacy'), t('privacy_desc'), privacy)
 
 
