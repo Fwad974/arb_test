@@ -325,6 +325,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
     radial-gradient(34rem 20rem at -4% 36%, var(--glow-red), transparent 72%);
 }
 .hero h1 { max-width: 18ch; }
+/* A long headline (build.py LONG_HEADLINE, so far only Arabic ones) gets a smaller size and a wider
+   measure, so it stays on three or four lines and the buttons stay on the first screen. */
+:root .hero h1.h1--long { max-width: 34ch; font-size: clamp(1.75rem, 1.1rem + 1.6vw, 2.6rem); }
 .breadcrumb ol { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 2.25rem; padding: 0; list-style: none; font-size: 0.875rem; color: var(--muted); }
 .breadcrumb li + li::before { content: "/"; margin-inline-end: 0.5rem; color: var(--field); }
 .breadcrumb a { text-decoration: none; }

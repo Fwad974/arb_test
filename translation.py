@@ -5,6 +5,15 @@ _SERVICE_AREAS, _SECTORS, _ROLES) plus VALUES, STEPS, STATS, PARTNER, LEGAL_UPDA
 SITE and UI. complete() fills in everything else from content.py (slugs, links,
 photos, numbers, logos) and fails loudly if a translation is missing or has a
 different number of items from the English, so the languages can't drift apart.
+
+Two exceptions, both explicit in the translation file:
+- LOCAL_KEYS / AREA_LOCAL_KEYS: a translation may give a page its own text where the English
+  page borrows it from its service area (the Industrial page's own lead, approach and outcomes;
+  a Services page summary that differs from the home page's). The build falls back to the
+  shared text wherever a translation does not.
+- _OWN_LENGTH: a set of (table, id, key) naming lists whose length the translation sets itself,
+  because the site owner rewrote them with a different number of items. Every other list must
+  have exactly as many items as the English one.
 """
 import copy
 
@@ -13,16 +22,28 @@ import content as en
 TEXT_KEYS = ('label', 'option', 'short', 'tag', 'title', 'intro', 'overview', 'overview_more', 'needs',
              'challenges_title', 'challenges', 'why', 'examples', 'deliverables', 'faq')
 AREA_KEYS = ('label', 'home', 'approach_title', 'approach', 'support', 'outcomes')
+LOCAL_KEYS = ('intro', 'approach', 'outcomes')   # a service page's own text, used instead of its area's
+AREA_LOCAL_KEYS = ('summary',)                   # the Services page summary, used instead of 'home'
 
 
-def _item(item, tr, where):
+def _check_length(where, key, ours, theirs, own):
+    if not isinstance(ours, list) or not ours:
+        raise ValueError(f'{where}: "{key}" must be a non-empty list')
+    if key not in own and len(ours) != len(theirs):
+        raise ValueError(f'{where}: "{key}" has {len(ours)} items, English has {len(theirs)}')
+
+
+def _item(item, tr, where, own=()):
     out = copy.deepcopy(item)
     for key in TEXT_KEYS:
         if key in item:
             if key not in tr:
                 raise KeyError(f'{where}: missing "{key}"')
-            if isinstance(item[key], list) and len(item[key]) != len(tr[key]):
-                raise ValueError(f'{where}: "{key}" has {len(tr[key])} items, English has {len(item[key])}')
+            if isinstance(item[key], list):
+                _check_length(where, key, tr[key], item[key], own)
+            out[key] = tr[key]
+    for key in LOCAL_KEYS:
+        if key in tr and key not in item:
             out[key] = tr[key]
     if item.get('areas'):
         out['areas'] = []
@@ -34,14 +55,17 @@ def _item(item, tr, where):
     return out
 
 
-def _area(area, tr, where):
+def _area(area, tr, where, own=()):
     out = copy.deepcopy(area)
     for key in AREA_KEYS:
         if key in area:
             if key not in tr:
                 raise KeyError(f'{where}: missing "{key}"')
-            if isinstance(area[key], list) and len(area[key]) != len(tr[key]):
-                raise ValueError(f'{where}: "{key}" has {len(tr[key])} items, English has {len(area[key])}')
+            if isinstance(area[key], list):
+                _check_length(where, key, tr[key], area[key], own)
+            out[key] = tr[key]
+    for key in AREA_LOCAL_KEYS:
+        if key in tr:
             out[key] = tr[key]
     return out
 
@@ -49,9 +73,21 @@ def _area(area, tr, where):
 def complete(ns):
     """Fill a translated content module's namespace in place. Call at the end of the module."""
     code = ns['LANG']['code']
-    ns['SERVICES'] = [_item(s, ns['_SERVICES'][s['slug']], f'{code} service {s["slug"]}') for s in en.SERVICES]
-    ns['LIFE_SCIENCES'] = _item(en.LIFE_SCIENCES, ns['_LIFE_SCIENCES'], f'{code} life-sciences')
-    ns['SERVICE_AREAS'] = [_area(a, ns['_SERVICE_AREAS'][a['id']], f'{code} service area {a["id"]}') for a in en.SERVICE_AREAS]
+    own = set(ns.get('_OWN_LENGTH', ()))
+    tables = {'_SERVICES': {s['slug'] for s in en.SERVICES}, '_LIFE_SCIENCES': {'life-sciences'},
+              '_SERVICE_AREAS': {a['id'] for a in en.SERVICE_AREAS}}
+    for table, ident, key in own:
+        if ident not in tables.get(table, ()):
+            raise KeyError(f'{code}: _OWN_LENGTH names an unknown list {(table, ident, key)}')
+
+    def own_keys(table, ident):
+        return {k for t, i, k in own if t == table and i == ident}
+    ns['SERVICES'] = [_item(s, ns['_SERVICES'][s['slug']], f'{code} service {s["slug"]}', own_keys('_SERVICES', s['slug']))
+                      for s in en.SERVICES]
+    ns['LIFE_SCIENCES'] = _item(en.LIFE_SCIENCES, ns['_LIFE_SCIENCES'], f'{code} life-sciences',
+                                own_keys('_LIFE_SCIENCES', 'life-sciences'))
+    ns['SERVICE_AREAS'] = [_area(a, ns['_SERVICE_AREAS'][a['id']], f'{code} service area {a["id"]}', own_keys('_SERVICE_AREAS', a['id']))
+                           for a in en.SERVICE_AREAS]
     ns['SECTORS'] = [dict(s, **ns['_SECTORS'][s['slug']]) for s in en.SECTORS]
     for sector in ns['SECTORS']:
         if sector['link'] and 'link_label' not in ns['_SECTORS'][sector['slug']]:

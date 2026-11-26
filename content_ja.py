@@ -680,6 +680,7 @@ UI = dict(
     copy_number='番号をコピー',
     wechat_hint_phone='WeChat でこの番号を検索して追加してください。',
     line_hint_phone='LINE の「友だち追加」でこの番号を検索して追加してください。',
+    outcomes_label='実現できること',
 )
 
 complete(globals())

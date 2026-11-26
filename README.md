@@ -39,6 +39,21 @@ versions relate.
 All three translations need a native-speaker review before launch. People's names stay in
 Latin script, as on the live site.
 
+The Arabic text follows the site owner's own review (26 November 2026), which rewrote most of
+it. Two kinds of difference from the English are declared in `content_ar.py`, and
+`translation.py` checks both:
+
+- **Lists with their own length:** where the owner rewrote a list with a different number of
+  items, the list is named in `_OWN_LENGTH`. Every other list must still match the English
+  count.
+- **Page-specific wording:** where the owner worded the same thing differently on two pages,
+  each page gets its own field. A service's Services-page summary (`summary`) differs from its
+  home-page description. The Industrial page also has its own lead, approach and outcomes
+  (`intro`, `approach`, `outcomes`). Any language without such a field shows the shared text.
+
+Long page headlines (over 75 characters, counting a Chinese or Japanese character as two) get a
+smaller size and a wider measure, so they stay on three or four lines.
+
 ## Run it locally
 
 Requires Python 3.9 or newer.

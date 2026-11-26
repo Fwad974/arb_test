@@ -580,6 +580,7 @@ UI = dict(
     copy_number='复制号码',
     wechat_hint_phone='在微信中搜索此号码即可添加我们。',
     line_hint_phone='在 LINE 的“添加好友”中搜索此号码即可添加我们。',
+    outcomes_label='帮助实现的成果',
 )
 
 complete(globals())

@@ -690,4 +690,5 @@ UI = dict(
     copy_number='Copy number',
     wechat_hint_phone='Search for this number in WeChat to add us.',
     line_hint_phone='In LINE, search for this number under Add friends to add us.',
+    outcomes_label='What this helps to achieve',
 )

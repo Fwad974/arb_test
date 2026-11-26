@@ -406,6 +406,15 @@ def section_wide(eyebrow, heading, body, intro='', id=None, footer='', cls='', s
 </section>'''
 
 
+def headline_length(text):
+    """How long a headline looks: characters, counting a CJK character as two."""
+    text = text.replace('[', '').replace(']', '')
+    return sum(2 if '\u3000' <= ch <= '\u9fff' or '\uff00' <= ch <= '\uffef' else 1 for ch in text)
+
+
+LONG_HEADLINE = 75  # longer page headlines get a smaller size and a wider measure (styles.css .h1--long)
+
+
 def page_hero(eyebrow, title, lead, actions='', crumbs=None, extra='', cls='', photo=''):
     """Page header. On wide screens (see .hero in styles.css) the intro and actions sit
     beside the headline instead of below it, so the first screen uses its full width.
@@ -423,7 +432,7 @@ def page_hero(eyebrow, title, lead, actions='', crumbs=None, extra='', cls='', p
     {crumbs_html}
     <div class="hero__main">
       <p class="eyebrow">{e(eyebrow)}</p>
-      <h1>{hl(title)}</h1>
+      <h1{' class="h1--long"' if headline_length(title) > LONG_HEADLINE else ''}>{hl(title)}</h1>
     </div>
     <div class="hero__side">
       <p class="lead">{e(lead)}</p>
@@ -800,7 +809,7 @@ def service_block(i, a):
   <div class="service__head">
     <span class="service__num">{num(i + 1)}</span>
     <h2>{e(a["label"])}</h2>
-    <p class="service__summary">{e(a["home"])}</p>
+    <p class="service__summary">{e(a.get("summary") or a["home"])}</p>
     <div class="service__achieve"><h3>{e(t("achieve_label"))}</h3>{plain_list(a["outcomes"], stacked=True)}</div>
   </div>
   <div class="service__body">
@@ -852,7 +861,7 @@ def build_detail(item, is_sector=False):
                                 top=True)
     else:
         overview = section(t('overview_eyebrow'), t('overview_heading'),
-                           f'<p class="body-lg">{e(area["approach"])}</p>', aside=subtitle + more)
+                           f'<p class="body-lg">{e(item.get("approach") or area["approach"])}</p>', aside=subtitle + more)
 
     support = section_wide(t('support_eyebrow'), t('support_heading'), plain_list(item.get('needs') or area['support'], wide=True),
                            id='support')
@@ -871,7 +880,7 @@ def build_detail(item, is_sector=False):
     if item.get('why'):
         left, right = (item['challenges_title'], item['challenges']), (t('why_title'), item['why'])
     else:
-        left, right = (t('challenges_title'), item['challenges']), (t('achieve_label'), area['outcomes'])
+        left, right = (t('challenges_title'), item['challenges']), (t('outcomes_label'), item.get('outcomes') or area['outcomes'])
     # Across the full width, the two lists side by side.
     outcomes = section_wide(
         t('outcomes_eyebrow'), t('outcomes_heading'),
