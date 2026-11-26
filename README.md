@@ -171,10 +171,11 @@ For real 301s, put a CDN such as Cloudflare in front of Pages and add the same r
 
 ## Client logos
 
-Logos are shown as one monochrome set: grey in light mode, inverted in dark mode. Every file
-is black ink on a transparent 360×160 canvas, so all logos share one size and visual weight.
-To add or replace one, save the original as `<slug>.png` (any size, white or transparent
-background) in a folder, then run:
+Logos are shown in full colour, in their own brand colours. In dark mode each sits on a white
+tile, so dark wordmarks stay legible and the colours stay true. Every file is the logo on a
+transparent 360×160 canvas, sized so all logos share one visual weight. To add or replace one,
+save the original as `<slug>.png` (any size, on a white, light or transparent background) in a
+folder, then run:
 
 ```bash
 pip install pillow numpy
@@ -183,6 +184,10 @@ pip install pillow numpy
 ```bash
 python3 scripts/prepare_logos.py path/to/originals assets/images/clients
 ```
+
+The script removes a plain light box behind a logo but keeps white details inside the mark.
+`--match assets/images/clients` keeps each replaced logo in the same position and size as the
+file it replaces. `--mono` makes the earlier black-ink version instead.
 
 Add `('slug', 'Company name')` to `CLIENTS_NETWORK` in `content.py`, or
 `('slug', 'Company name', 'https://example.com/')` to make the logo link to the company's
