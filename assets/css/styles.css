@@ -41,8 +41,9 @@
   --on-dark: #c9d3de;        /* text on navy (10.7:1) */
   --on-dark-muted: #9fb0c2;  /* labels on navy (7.3:1) */
   --focus-ring: rgba(15, 33, 55, 0.16);
-  --logo-filter: none;       /* logos are black ink on transparent */
-  --logo-opacity: 0.68;
+  --logo-filter: none;       /* logos are in their own brand colours */
+  --logo-opacity: 1;
+  --logo-tile: transparent;  /* dark mode: a white tile behind each logo */
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f2137' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
   --font: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -81,8 +82,9 @@
     --footer-bg: #07101a;
     --footer-border: #1f2e3f;
     --focus-ring: rgba(242, 244, 247, 0.18);
-    --logo-filter: invert(1);
-    --logo-opacity: 0.74;
+    --logo-filter: none;
+    --logo-opacity: 1;
+    --logo-tile: #fff;  /* brand colours stay true and dark wordmarks legible */
     --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d5dbe3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   }
 }
@@ -323,6 +325,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
     radial-gradient(34rem 20rem at -4% 36%, var(--glow-red), transparent 72%);
 }
 .hero h1 { max-width: 18ch; }
+/* A long headline (build.py LONG_HEADLINE, so far only Arabic ones) gets a smaller size and a wider
+   measure, so it stays on three or four lines and the buttons stay on the first screen. */
+:root .hero h1.h1--long { max-width: 34ch; font-size: clamp(1.75rem, 1.1rem + 1.6vw, 2.6rem); }
 .breadcrumb ol { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 2.25rem; padding: 0; list-style: none; font-size: 0.875rem; color: var(--muted); }
 .breadcrumb li + li::before { content: "/"; margin-inline-end: 0.5rem; color: var(--field); }
 .breadcrumb a { text-decoration: none; }
@@ -615,7 +620,7 @@ a.row__link:hover .row__arrow { color: var(--accent-text); transform: translateX
 .wide__head h2 { max-width: 20ch; }
 .logos { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem 1rem; margin: 0; padding: 0; list-style: none; }
 .logos li { flex: 0 0 calc((100% - 6 * 1rem) / 7); display: flex; justify-content: center; }
-.logos img { width: 100%; max-width: 11.25rem; height: auto; filter: var(--logo-filter); opacity: var(--logo-opacity); transition: opacity var(--ease); }
+.logos img { width: 100%; max-width: 11.25rem; height: auto; filter: var(--logo-filter); opacity: var(--logo-opacity); background: var(--logo-tile); border-radius: 0.5rem; transition: opacity var(--ease); }
 .logos li:hover img, .logos a:focus-visible img { opacity: 1; }
 .logos a { display: flex; justify-content: center; width: 100%; border-radius: 0.5rem; }
 .split__body .logos li { flex-basis: calc((100% - 3 * 1rem) / 4); }
